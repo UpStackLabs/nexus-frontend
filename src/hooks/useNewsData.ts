@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { fetchMarketNews, NewsItem as FinnhubNewsItem } from '../services/finnhub';
 import { fetchGdeltEvents, GdeltArticle, parseGdeltDate } from '../services/gdelt';
-import { GDELT_QUERY, FINNHUB_KEY } from '../config';
+import { GDELT_QUERY } from '../config';
 
 export type NewsSource = 'geopolitical' | 'market';
 
@@ -25,17 +24,6 @@ function fromGdelt(a: GdeltArticle): NewsEntry {
   };
 }
 
-function fromFinnhub(a: FinnhubNewsItem): NewsEntry {
-  return {
-    id: `fh-${a.id}`,
-    title: a.headline,
-    source: a.source,
-    url: a.url,
-    timestamp: a.datetime * 1000,
-    type: 'market',
-  };
-}
-
 const REFRESH_MS = 120_000; // 2 min
 
 export function useNewsData() {
@@ -47,24 +35,21 @@ export function useNewsData() {
     let mounted = true;
 
     async function refresh() {
-      const tasks = [
-        fetchGdeltEvents(GDELT_QUERY).then(a => a.map(fromGdelt)).catch(() => [] as NewsEntry[]),
-        FINNHUB_KEY
-          ? fetchMarketNews().then(a => a.map(fromFinnhub)).catch(() => [] as NewsEntry[])
-          : Promise.resolve([] as NewsEntry[]),
-      ];
+      try {
+        const articles = await fetchGdeltEvents(GDELT_QUERY);
+        const entries = articles.map(fromGdelt).sort((a, b) => b.timestamp - a.timestamp).slice(0, 40);
 
-      const [geo, market] = await Promise.all(tasks);
-      const all = [...geo, ...market].sort((a, b) => b.timestamp - a.timestamp).slice(0, 40);
-
-      if (!mounted) return;
-      if (all.length === 0) {
-        setError('No news sources available');
-      } else {
-        setNews(all);
-        setError(null);
+        if (!mounted) return;
+        if (entries.length === 0) {
+          setError('No news sources available');
+        } else {
+          setNews(entries);
+          setError(null);
+        }
+      } catch {
+        if (mounted) setError('Failed to fetch news');
       }
-      setLoading(false);
+      if (mounted) setLoading(false);
     }
 
     refresh();

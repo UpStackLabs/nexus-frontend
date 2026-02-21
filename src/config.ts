@@ -1,10 +1,7 @@
 // ShockGlobe — Application Configuration
 // Live API endpoints + application constants (no hardcoded data values)
 
-export const FINNHUB_KEY = import.meta.env.VITE_FINNHUB_KEY;
-
 export const API = {
-  finnhub: 'https://finnhub.io/api/v1',
   exchangeRate: 'https://open.er-api.com/v6/latest',
   gdelt: 'https://api.gdeltproject.org/api/v2/doc/doc',
 } as const;

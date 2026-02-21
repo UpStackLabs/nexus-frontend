@@ -280,3 +280,21 @@ export async function getStockPrediction(
   return fetchJson(`/stocks/${ticker}/predict?days=${days}`);
 }
 
+// ── Quotes (proxy for Finnhub-style data) ───────────────────────────────────
+export interface ApiQuote {
+  c: number;   // current price
+  h: number;   // day high
+  l: number;   // day low
+  o: number;   // open price
+  pc: number;  // previous close
+  d: number;   // absolute change
+  dp: number;  // percent change
+  t: number;   // unix timestamp
+}
+
+export async function getQuotes(
+  symbols: readonly string[],
+): Promise<Record<string, ApiQuote>> {
+  return fetchJson(`/stocks/quotes?symbols=${symbols.join(',')}`);
+}
+

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { MessageSquare, Bell } from 'lucide-react';
-import { FINNHUB_KEY } from '../../config';
 import { useApp } from '../context';
 import { useEvents } from '../../hooks/useBackendData';
 import { EventSelector } from './event-selector';
@@ -38,7 +37,6 @@ function ApiDot({ label, active }: { label: string; active: boolean }) {
 export function Header() {
   const [clock, setClock] = useState('');
   const [mode, setMode] = useState<Mode>('LIVE');
-  const hasFinnhub = Boolean(FINNHUB_KEY);
   const { selectedEventId, setSelectedEventId, setChatOpen, chatOpen, setAlertsOpen } = useApp();
   const { events } = useEvents();
 
@@ -150,7 +148,7 @@ export function Header() {
         <ApiDot label="NEXUS-API" active />
         <ApiDot label="OPEN-METEO" active />
         <ApiDot label="GDELT" active />
-        <ApiDot label="FINNHUB" active={hasFinnhub} />
+        <ApiDot label="MARKET-DATA" active />
       </div>
 
       {/* Mode toggle */}

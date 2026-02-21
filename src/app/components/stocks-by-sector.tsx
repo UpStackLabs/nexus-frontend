@@ -149,12 +149,12 @@ export function StocksBySector() {
                 {isOpen && (
                   <div>
                     {stocks.map((stock) => {
-                      // Merge live prices from socket, Finnhub, or backend fallback
+                      // Merge live prices from socket, backend quotes, or seed fallback
                       const socketPrice = prices[stock.ticker];
-                      const finnhubQuote = quotes[stock.ticker];
-                      const livePrice = socketPrice?.price ?? finnhubQuote?.c ?? stock.price;
-                      const change = socketPrice?.change ?? finnhubQuote?.d ?? stock.priceChange;
-                      const changePct = socketPrice?.changePercent ?? finnhubQuote?.dp ?? stock.priceChangePercent;
+                      const quote = quotes[stock.ticker];
+                      const livePrice = socketPrice?.price ?? quote?.c ?? stock.price;
+                      const change = socketPrice?.change ?? quote?.d ?? stock.priceChange;
+                      const changePct = socketPrice?.changePercent ?? quote?.dp ?? stock.priceChangePercent;
                       const positive = change >= 0;
                       const isSelected = selectedSymbol === stock.ticker;
 
