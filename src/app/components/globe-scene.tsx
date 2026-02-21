@@ -51,11 +51,12 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [markerCount, setMarkerCount] = useState(0);
+  const [mapReady, setMapReady] = useState(false);
 
   // Fetch heatmap data and render markers
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.loaded()) return;
+    if (!map || !mapReady) return;
 
     // Clear existing markers
     markersRef.current.forEach((m) => m.remove());
@@ -129,12 +130,12 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
     }
 
     loadMarkers();
-  }, [selectedEventId]);
+  }, [selectedEventId, mapReady]);
 
   // Fetch arcs and render
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.loaded()) return;
+    if (!map || !mapReady) return;
 
     async function loadArcs() {
       let arcFeatures: {
@@ -199,7 +200,7 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
     }
 
     loadArcs();
-  }, [selectedEventId]);
+  }, [selectedEventId, mapReady]);
 
   // Initialize map (once)
   useEffect(() => {
@@ -223,9 +224,12 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
       "top-right"
     );
 
+    map.on("load", () => setMapReady(true));
+
     return () => {
       map.remove();
       mapRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
