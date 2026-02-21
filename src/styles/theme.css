@@ -1,0 +1,99 @@
+@custom-variant dark (&:is(.dark *));
+
+/* ── Palantir Industrial Palette ─────────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --bg:          #0a0a0a;
+  --bg-surface:  #0e0e0e;
+  --bg-raised:   #131313;
+  --bg-hover:    #181818;
+
+  /* Borders */
+  --border:      #1e1e1e;
+  --border-dim:  #141414;
+
+  /* Typography */
+  --text:        #ccc7c0;   /* off-white, slight warmth */
+  --text-2:      #4a4540;   /* dim secondary */
+  --text-3:      #272320;   /* very dim */
+
+  /* Accent — Palantir crimson */
+  --red:         #c42020;
+  --red-dim:     #5a1010;
+  --red-bright:  #ef4444;
+
+  /* Status */
+  --green:       #22c55e;
+  --green-dim:   #14532d;
+  --amber:       #d97706;
+  --blue:        #3b82f6;
+  --blue-dim:    #1e3a5f;
+
+  /* Data grid */
+  --row-alt:     rgba(255,255,255,0.013);
+
+  /* Tailwind compat */
+  --background:         var(--bg);
+  --foreground:         var(--text);
+  --card:               var(--bg-surface);
+  --card-foreground:    var(--text);
+  --primary:            var(--red);
+  --primary-foreground: #ffffff;
+  --secondary:          var(--bg-raised);
+  --secondary-foreground: var(--text-2);
+  --muted:              var(--bg-surface);
+  --muted-foreground:   var(--text-2);
+  --accent:             var(--red);
+  --accent-foreground:  #ffffff;
+  --border:             var(--border);
+  --ring:               var(--red);
+  --radius:             0px;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--bg-surface);
+  --color-card-foreground: var(--text);
+  --color-primary: var(--red);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--bg-raised);
+  --color-secondary-foreground: var(--text-2);
+  --color-muted: var(--bg-surface);
+  --color-muted-foreground: var(--text-2);
+  --color-accent: var(--red);
+  --color-accent-foreground: #ffffff;
+  --color-border: #1e1e1e;
+  --color-ring: var(--red);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: #1e1e1e;
+  }
+
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.01em;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+}
