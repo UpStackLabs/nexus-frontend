@@ -1,15 +1,6 @@
 {
   "permissions": {
     "allow": [
-<<<<<<< HEAD
-      "Bash(start upstack-hero.html)",
-      "mcp__figma-remote-mcp__get_metadata",
-      "mcp__figma-remote-mcp__get_design_context",
-      "Bash(tail:*)",
-      "Bash(cd \"C:\\\\Users\\\\Namis\\\\OneDrive\\\\Documents\\\\hackalytics-frontend\" && npx vite build 2>&1)",
-      "Bash(head:*)"
-=======
->>>>>>> 7398af52fe93e65582cb44da493930f528ec9a99
     ]
   },
   "enableAllProjectMcpServers": true,
