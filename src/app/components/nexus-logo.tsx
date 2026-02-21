@@ -10,8 +10,8 @@ export function NexusLogo({ size = 28 }: { size?: number }) {
     >
       <defs>
         <linearGradient id={id} x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0%" stopColor="#2196f3" />
-          <stop offset="100%" stopColor="#00c853" />
+          <stop offset="0%" stopColor="#c41e3a" />
+          <stop offset="100%" stopColor="#9c27b0" />
         </linearGradient>
       </defs>
 
@@ -26,8 +26,8 @@ export function NexusLogo({ size = 28 }: { size?: number }) {
       />
 
       {/* Small dot accents at the data points */}
-      <circle cx="14" cy="50" r="3" fill="#2196f3" />
-      <circle cx="50" cy="14" r="3" fill="#00c853" />
+      <circle cx="14" cy="50" r="3" fill="#c41e3a" />
+      <circle cx="50" cy="14" r="3" fill="#9c27b0" />
     </svg>
   );
 }
