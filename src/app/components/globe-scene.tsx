@@ -226,18 +226,8 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
       style: "mapbox://styles/mapbox/dark-v11",
       center: [20, 20],
       zoom: 1.8,
-      projection: "globe",
+      projection: "mercator",
       attributionControl: false,
-    });
-
-    map.on("style.load", () => {
-      map.setFog({
-        color: "rgb(10, 10, 10)",
-        "high-color": "rgb(20, 10, 15)",
-        "horizon-blend": 0.08,
-        "space-color": "rgb(5, 5, 5)",
-        "star-intensity": 0.4,
-      });
     });
 
     mapRef.current = map;
@@ -247,42 +237,7 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
       "top-right"
     );
 
-    // Slow auto-rotation
-    let rotating = true;
-    let lastTime = performance.now();
-
-    function spinGlobe() {
-      if (!rotating || !mapRef.current) return;
-      const now = performance.now();
-      const delta = (now - lastTime) / 1000;
-      lastTime = now;
-      const center = mapRef.current.getCenter();
-      center.lng -= delta * 3;
-      mapRef.current.setCenter(center);
-      requestAnimationFrame(spinGlobe);
-    }
-
-    map.on("load", () => {
-      requestAnimationFrame(spinGlobe);
-    });
-
-    let resumeTimer: ReturnType<typeof setTimeout>;
-    const pause = () => {
-      rotating = false;
-      clearTimeout(resumeTimer);
-      resumeTimer = setTimeout(() => {
-        rotating = true;
-        lastTime = performance.now();
-        requestAnimationFrame(spinGlobe);
-      }, 4000);
-    };
-    map.on("mousedown", pause);
-    map.on("touchstart", pause);
-    map.on("wheel", pause);
-
     return () => {
-      rotating = false;
-      clearTimeout(resumeTimer);
       map.remove();
       mapRef.current = null;
     };
@@ -327,7 +282,7 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
       <div className="absolute bottom-3 right-3 z-30 text-[9px] text-[#353535] tracking-[0.08em] text-right pointer-events-none">
         <div>SRC: MULTI-INT</div>
         <div>REF: 30s CYCLE</div>
-        <div>PROJ: GLOBE-3D</div>
+        <div>PROJ: MERCATOR-2D</div>
       </div>
 
       <style>{`
