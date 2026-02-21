@@ -29,26 +29,3 @@ export const WEATHER_LOCATIONS = [
 
 // GDELT search query for geopolitical events
 export const GDELT_QUERY = 'Venezuela military invasion Guyana Essequibo';
-
-// Globe arc configuration — purely geometric/logical, not data
-export const SHOCK_ARCS = [
-  { from: { lat: 10.48, lng: -66.88 }, to: { lat: 29.76, lng: -95.37 }, city: 'HOU', type: 'OIL' },
-  { from: { lat: 10.48, lng: -66.88 }, to: { lat: 38.89, lng: -77.03 }, city: 'DC', type: 'DEFENSE' },
-  { from: { lat: 10.48, lng: -66.88 }, to: { lat: 51.51, lng: -0.12 }, city: 'LON', type: 'DEFENSE' },
-  { from: { lat: 10.48, lng: -66.88 }, to: { lat: -23.55, lng: -46.63 }, city: 'GRU', type: 'FX' },
-  { from: { lat: 10.48, lng: -66.88 }, to: { lat: 24.68, lng: 46.72 }, city: 'RUH', type: 'OIL' },
-  { from: { lat: 10.48, lng: -66.88 }, to: { lat: 51.92, lng: 4.47 }, city: 'RTM', type: 'OIL' },
-] as const;
-
-export const EPICENTER = { lat: 10.48, lng: -66.88, label: 'CARACAS' } as const;
-
-// Shock scenario metadata (not price data — conceptual/classification)
-export const SHOCK_META = {
-  id: 'VEN-2026-001',
-  title: 'Venezuelan Invasion of Guyana',
-  type: 'GEOPOLITICAL',
-  severity: 'CRITICAL',
-  timestamp: '2026-02-20T06:34:00Z',
-  shockScore: 8.7,
-  surpriseFactor: 2.4,
-} as const;

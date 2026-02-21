@@ -1,6 +1,14 @@
 import { Cloud, Thermometer, Wind, Droplets, Gauge, Satellite } from "lucide-react";
 import { useWeatherData } from "../../hooks/useWeatherData";
-import { satellitePasses } from "./mock-data";
+
+// Satellite schedule — static reference data (not dynamic/mocked)
+const SATELLITE_PASSES = [
+  { name: "NOAA-20", nextPass: "14:32 UTC", elevation: "78deg", type: "WEATHER" },
+  { name: "Sentinel-2B", nextPass: "15:08 UTC", elevation: "62deg", type: "IMAGERY" },
+  { name: "GOES-18", nextPass: "GEOSTAT", elevation: "N/A", type: "WEATHER" },
+  { name: "Landsat-9", nextPass: "16:45 UTC", elevation: "45deg", type: "IMAGERY" },
+  { name: "WorldView-3", nextPass: "17:22 UTC", elevation: "71deg", type: "HIGH-RES" },
+];
 
 // Map the 3 Open-Meteo locations to display names
 const REGION_NAMES: Record<string, string> = {
@@ -87,7 +95,7 @@ export function WeatherPanel() {
         <div className="px-3 py-2 border-t border-[#141414]">
           <div className="text-[9px] text-[#505050] tracking-[0.1em] mb-2">SATELLITE PASSES</div>
           <div className="space-y-1">
-            {satellitePasses.map((sat, i) => (
+            {SATELLITE_PASSES.map((sat, i) => (
               <div key={i} className="flex items-center justify-between py-1.5 px-2 bg-[#0e0e0e] border border-[#141414]">
                 <div className="flex items-center gap-2">
                   <Satellite className="w-3 h-3 text-[#2196f3]" />

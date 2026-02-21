@@ -1,18 +1,20 @@
-import { TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { TrendingUp, TrendingDown, BarChart3, Loader } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { useStockData } from "../../hooks/useStockData";
 import { useStocks } from "../../hooks/useBackendData";
-import { stocks as mockStocks, generateStockHistory } from "./mock-data";
+import { getStockHistory } from "../../services/api";
 import { useApp } from "../context";
 
-// Pre-generate sparkline data for mock stocks (stable, does not re-randomize on render)
-const sparklineData: Record<string, { price: number }[]> = {};
-mockStocks.forEach((s) => {
-  sparklineData[s.symbol] = generateStockHistory(s.price, 0.015).slice(-14);
-});
-
 function MiniChart({ symbol, positive }: { symbol: string; positive: boolean }) {
-  const data = sparklineData[symbol] || [];
+  const [data, setData] = useState<{ price: number }[]>([]);
+
+  useEffect(() => {
+    getStockHistory(symbol, '1W')
+      .then(points => setData(points.slice(-14).map(p => ({ price: p.price }))))
+      .catch(() => {});
+  }, [symbol]);
+
   const color = positive ? "#00c853" : "#c41e3a";
   if (data.length === 0) return null;
   return (
@@ -43,21 +45,19 @@ export function StockPanel() {
   const { quotes, hasKey } = useStockData();
   const { stocks: backendStocks, loading: backendLoading } = useStocks();
 
-  // Build display list: prefer backend stocks, fall back to mock
-  const baseStocks = backendStocks.length > 0
-    ? backendStocks.map((s) => ({
-        symbol: s.ticker,
-        name: s.companyName,
-        price: s.price,
-        change: s.priceChange,
-        changePercent: s.priceChangePercent,
-        volume: s.volume > 1_000_000
-          ? `${(s.volume / 1_000_000).toFixed(1)}M`
-          : s.volume > 1_000
-            ? `${(s.volume / 1_000).toFixed(0)}K`
-            : String(s.volume),
-      }))
-    : mockStocks;
+  // Build display list from backend stocks
+  const baseStocks = backendStocks.map((s) => ({
+    symbol: s.ticker,
+    name: s.companyName,
+    price: s.price,
+    change: s.priceChange,
+    changePercent: s.priceChangePercent,
+    volume: s.volume > 1_000_000
+      ? `${(s.volume / 1_000_000).toFixed(1)}M`
+      : s.volume > 1_000
+        ? `${(s.volume / 1_000).toFixed(0)}K`
+        : String(s.volume),
+  }));
 
   // Overlay Finnhub live quotes when available
   const displayStocks = baseStocks.map((s) => {
@@ -83,11 +83,22 @@ export function StockPanel() {
           <span className="text-[10px] text-[#707070] tracking-[0.12em]">MARKET WATCH</span>
         </div>
         <span className="text-[9px] text-[#404040]">
-          {backendLoading ? "LOADING" : isLive ? "LIVE" : "DEMO"}
+          {backendLoading ? "LOADING" : isLive ? "LIVE" : "OFFLINE"}
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {backendLoading && (
+          <div className="flex items-center gap-2 px-3 py-4">
+            <Loader className="w-3 h-3 animate-spin text-[#404040]" />
+            <span className="text-[9px] text-[#404040]">Loading stocks...</span>
+          </div>
+        )}
+        {!backendLoading && displayStocks.length === 0 && (
+          <div className="px-3 py-4 text-[9px] text-[#404040]">
+            No stock data available. Backend may be offline.
+          </div>
+        )}
         {displayStocks.map((stock) => {
           const positive = stock.change >= 0;
           return (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MessageSquare, Bell } from 'lucide-react';
-import { SHOCK_META, FINNHUB_KEY } from '../../config';
+import { FINNHUB_KEY } from '../../config';
 import { useApp } from '../context';
 import { useEvents } from '../../hooks/useBackendData';
 import { EventSelector } from './event-selector';
@@ -101,7 +101,7 @@ export function Header() {
       {/* Divider */}
       <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--border)', margin: '0 12px', flexShrink: 0 }} />
 
-      {/* Event selector (replaces static badge when backend has events) */}
+      {/* Event selector */}
       {events.length > 0 ? (
         <EventSelector
           events={events}
@@ -115,36 +115,13 @@ export function Header() {
             alignItems: 'center',
             gap: '6px',
             padding: '2px 8px',
-            border: '1px solid var(--red-dim)',
-            backgroundColor: '#0f0404',
+            border: '1px solid var(--border-dim)',
+            backgroundColor: 'var(--bg-surface)',
             flexShrink: 0,
           }}
         >
-          <div
-            className="animate-pulse"
-            style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--red)', flexShrink: 0 }}
-          />
-          <span style={{ ...MONO, fontSize: '8px', color: 'var(--red)', letterSpacing: '0.1em' }}>
-            {SHOCK_META.id}
-          </span>
-          <span style={{ ...MONO, fontSize: '8px', color: 'var(--text-3)' }}>|</span>
-          <span
-            style={{
-              ...MONO,
-              fontSize: '8px',
-              color: 'var(--text-2)',
-              letterSpacing: '0.04em',
-              maxWidth: '260px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {SHOCK_META.title.toUpperCase()}
-          </span>
-          <span style={{ ...MONO, fontSize: '8px', color: 'var(--text-3)' }}>|</span>
-          <span style={{ ...MONO, fontSize: '8px', color: 'var(--red-bright)', letterSpacing: '0.08em' }}>
-            {SHOCK_META.severity}
+          <span style={{ ...MONO, fontSize: '8px', color: 'var(--text-3)', letterSpacing: '0.1em' }}>
+            NO EVENTS — AWAITING DATA
           </span>
         </div>
       )}

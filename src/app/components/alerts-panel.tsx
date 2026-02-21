@@ -1,8 +1,7 @@
-import { X, Bell, AlertCircle } from "lucide-react";
+import { X, Bell, AlertCircle, Loader } from "lucide-react";
 import { useApp } from "../context";
 import { useNewsData } from "../../hooks/useNewsData";
 import { useEvents } from "../../hooks/useBackendData";
-import { osintEvents as mockOsintEvents } from "./mock-data";
 
 const SEV_COLORS: Record<string, string> = {
   CRITICAL: "#c41e3a",
@@ -41,24 +40,21 @@ function timeAgo(ms: number): string {
 export function AlertsPanel() {
   const { alertsOpen, setAlertsOpen } = useApp();
   const { news, loading } = useNewsData();
-  const { events: backendEvents } = useEvents();
+  const { events: backendEvents, loading: eventsLoading } = useEvents();
 
   if (!alertsOpen) return null;
 
-  // Use backend events if available, otherwise fall back to mock
-  const alerts = backendEvents.length > 0
-    ? backendEvents.map(e => ({
-        id: e.id,
-        type: mapEventType(e.type),
-        severity: severityLabel(e.severity),
-        title: e.title,
-        description: e.description,
-        timestamp: e.timestamp,
-        source: e.source.toUpperCase(),
-        impact: 0,
-        impactedStocks: e.affectedTickers,
-      }))
-    : mockOsintEvents;
+  const alerts = backendEvents.map(e => ({
+    id: e.id,
+    type: mapEventType(e.type),
+    severity: severityLabel(e.severity),
+    title: e.title,
+    description: e.description,
+    timestamp: e.timestamp,
+    source: e.source.toUpperCase(),
+    impact: 0,
+    impactedStocks: e.affectedTickers,
+  }));
 
   const totalAlerts = alerts.length + Math.min(news.length, 10);
 
@@ -106,6 +102,18 @@ export function AlertsPanel() {
             )}
           </div>
 
+          {eventsLoading && (
+            <div className="px-4 py-4 flex items-center gap-2 text-[9px] text-[#404040]">
+              <Loader className="w-3 h-3 animate-spin" />
+              <span>FETCHING INTELLIGENCE DATA...</span>
+            </div>
+          )}
+          {!eventsLoading && alerts.length === 0 && (
+            <div className="px-4 py-4 flex items-center gap-2 text-[9px] text-[#404040]">
+              <AlertCircle className="w-3 h-3" />
+              <span>No active alerts</span>
+            </div>
+          )}
           {alerts.map((event) => (
             <div
               key={event.id}

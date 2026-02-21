@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Cpu, Wifi, Zap, Database, Activity, Shield } from "lucide-react";
 import * as api from "../../services/api";
 import { useEvents } from "../../hooks/useBackendData";
-import { systemStatus as mockStatus } from "./mock-data";
 
 const NODE_ID = `NX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
@@ -27,7 +26,7 @@ function MetricBar({ value, max, color }: { value: number; max: number; color: s
 
 export function SystemMetrics() {
   const { events } = useEvents();
-  const [signals, setSignals] = useState(mockStatus.signalsCaptured);
+  const [signals, setSignals] = useState(0);
   const [health, setHealth] = useState<{ status: string; uptime: number; timestamp: string } | null>(null);
   const [backendOnline, setBackendOnline] = useState(false);
 
@@ -56,10 +55,10 @@ export function SystemMetrics() {
     return () => clearInterval(interval);
   }, []);
 
-  const activeAlerts = events.length > 0 ? events.length : mockStatus.activeAlerts;
-  const dataFeeds = backendOnline ? 47 : mockStatus.dataFeeds;
-  const uptime = health ? formatUptime(health.uptime) : mockStatus.uptime;
-  const lastSync = health ? health.timestamp : mockStatus.lastSync;
+  const activeAlerts = events.length;
+  const dataFeeds = backendOnline ? 47 : 0;
+  const uptime = health ? formatUptime(health.uptime) : "—";
+  const lastSync = health ? health.timestamp : new Date().toISOString();
 
   return (
     <div className="h-full flex flex-col">

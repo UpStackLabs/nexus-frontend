@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Shield, Cloud, Cpu, Globe2, TrendingDown, ChevronRight, Radio } from "lucide-react";
+import { Shield, Cloud, Cpu, Globe2, TrendingDown, ChevronRight, Radio, Loader } from "lucide-react";
 import { useNewsData } from "../../hooks/useNewsData";
 import { useEvents } from "../../hooks/useBackendData";
 import { useApp } from "../context";
-import { osintEvents as mockOsintEvents } from "./mock-data";
 
 interface OsintEvent {
   id: number | string;
@@ -17,7 +16,7 @@ interface OsintEvent {
   impactedStocks: string[];
   impact: number;
   source: string;
-  backendEventId?: string; // original backend event ID for selecting
+  backendEventId?: string;
 }
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -28,6 +27,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   ECONOMIC: <TrendingDown className="w-3 h-3" />,
   MILITARY: <Globe2 className="w-3 h-3" />,
   NATURAL_DISASTER: <Cloud className="w-3 h-3" />,
+  POLICY: <Globe2 className="w-3 h-3" />,
 };
 
 const severityColors: Record<string, string> = {
@@ -37,20 +37,19 @@ const severityColors: Record<string, string> = {
   LOW: "#00c853",
 };
 
-// Map backend event type strings to display categories
 function mapEventType(type: string): string {
   const typeMap: Record<string, string> = {
-    military: "GEOPOLITICAL",
+    military: "MILITARY",
     geopolitical: "GEOPOLITICAL",
     economic: "ECONOMIC",
-    natural_disaster: "WEATHER",
+    natural_disaster: "NATURAL_DISASTER",
     cyber: "CYBER",
     supply_chain: "SUPPLY_CHAIN",
+    policy: "POLICY",
   };
   return typeMap[type.toLowerCase()] ?? type.toUpperCase();
 }
 
-// Map backend severity number (1-10) to display label
 function mapSeverity(severity: number): string {
   if (severity >= 8) return "CRITICAL";
   if (severity >= 6) return "HIGH";
@@ -66,7 +65,6 @@ function timeAgo(timestamp: string): string {
   return `${mins}m ago`;
 }
 
-// Map GDELT/Finnhub news to the OSINT event format for display
 function gdeltToEvent(article: { id: string; title: string; source: string; url: string; timestamp: number; type: string }, idx: number): OsintEvent {
   return {
     id: idx + 100,
@@ -88,7 +86,7 @@ export function OsintFeed() {
   const [filter, setFilter] = useState<string>("ALL");
   const [showAll, setShowAll] = useState(false);
   const { news } = useNewsData();
-  const { events: backendEvents } = useEvents();
+  const { events: backendEvents, loading } = useEvents();
   const { setSelectedEventId } = useApp();
 
   // Map backend events to display format
@@ -102,21 +100,18 @@ export function OsintFeed() {
     lat: e.location.lat,
     lng: e.location.lng,
     impactedStocks: e.affectedTickers,
-    impact: 0, // no aggregate impact from backend, shocks provide per-stock detail
+    impact: 0,
     source: e.source.toUpperCase(),
     backendEventId: e.id,
   }));
 
-  // Merge real GDELT news with mock events for a richer feed
+  // Merge real GDELT news for a richer feed
   const liveEvents: OsintEvent[] = news
     .filter((n) => n.type === "geopolitical")
     .slice(0, 4)
     .map(gdeltToEvent);
 
-  // Use backend events first, then GDELT, then mock as fallback
-  const allEvents: OsintEvent[] = backendMapped.length > 0
-    ? [...backendMapped, ...liveEvents]
-    : [...liveEvents, ...mockOsintEvents];
+  const allEvents: OsintEvent[] = [...backendMapped, ...liveEvents];
 
   const filteredEvents =
     filter === "ALL" ? allEvents : allEvents.filter((e) => e.type === filter);
@@ -138,7 +133,7 @@ export function OsintFeed() {
 
       {/* Filters */}
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[#141414] overflow-x-auto">
-        {["ALL", "GEOPOLITICAL", "WEATHER", "CYBER", "SUPPLY_CHAIN", "ECONOMIC"].map((f) => (
+        {["ALL", "GEOPOLITICAL", "MILITARY", "ECONOMIC", "NATURAL_DISASTER", "POLICY"].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -155,13 +150,23 @@ export function OsintFeed() {
 
       {/* Events List */}
       <div className="flex-1 overflow-y-auto">
+        {loading && (
+          <div className="flex items-center gap-2 px-3 py-4">
+            <Loader className="w-3 h-3 animate-spin text-[#404040]" />
+            <span className="text-[9px] text-[#404040]">Loading events...</span>
+          </div>
+        )}
+        {!loading && allEvents.length === 0 && (
+          <div className="px-3 py-4 text-[9px] text-[#404040]">
+            No events available. Backend may be offline.
+          </div>
+        )}
         {visibleEvents.map((event) => (
           <div
             key={event.id}
             className="px-3 py-2.5 border-b border-[#141414] cursor-pointer hover:bg-[#0e0e0e] transition-colors"
             onClick={() => {
               setExpandedId(expandedId === event.id ? null : event.id);
-              // Set the selected event in app context so globe/shock panel react
               if (event.backendEventId) {
                 setSelectedEventId(event.backendEventId);
               }
@@ -207,14 +212,6 @@ export function OsintFeed() {
                     <p className="text-[10px] text-[#707070] mb-2 leading-relaxed">
                       {event.description}
                     </p>
-                    {event.impact !== 0 && (
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] text-[#505050] tracking-[0.08em]">IMPACT:</span>
-                        <span className={`text-[10px] ${event.impact > 0 ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
-                          {event.impact > 0 ? "+" : ""}{event.impact}%
-                        </span>
-                      </div>
-                    )}
                     {event.impactedStocks.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {event.impactedStocks.map((s) => (

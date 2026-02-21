@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Loader } from 'lucide-react';
-import { SHOCK_META, SHOCK_ARCS } from '../../config';
 import { useWeatherData } from '../../hooks/useWeatherData';
 import { useApp } from '../context';
 import * as api from '../../services/api';
@@ -73,22 +72,22 @@ export function ShockPanel() {
       .finally(() => setLoading(false));
   }, [selectedEventId]);
 
-  // Compute display values from backend data, fall back to SHOCK_META defaults
+  // Compute display values from backend data
   const shockScore = shocks.length > 0
     ? Math.max(...shocks.map((s) => s.score))
-    : SHOCK_META.shockScore;
+    : 0;
 
   const surpriseFactor = shocks.length > 0
     ? (shocks.reduce((sum, s) => sum + (s.surpriseFactor ?? 0), 0) / shocks.filter((s) => s.surpriseFactor != null).length) || 0
-    : SHOCK_META.surpriseFactor;
+    : 0;
 
-  const eventId = event?.id ?? SHOCK_META.id;
-  const eventType = event ? formatEventType(event.type) : SHOCK_META.type;
-  const eventSeverity = event ? formatSeverity(event.severity) : SHOCK_META.severity;
+  const eventId = event?.id ?? '—';
+  const eventType = event ? formatEventType(event.type) : '—';
+  const eventSeverity = event ? formatSeverity(event.severity) : '—';
   const eventTimestamp = event
     ? new Date(event.timestamp).toISOString().replace('T', ' ').slice(0, 16) + 'Z'
-    : '2026-02-20 06:34Z';
-  const vectorCount = shocks.length > 0 ? shocks.length : SHOCK_ARCS.length;
+    : '—';
+  const vectorCount = shocks.length;
 
   // Group shocks by sector for propagation breakdown
   const sectorGroups = shocks.length > 0
@@ -218,27 +217,14 @@ export function ShockPanel() {
             );
           })
         ) : (
-          // Default: mock arc types
-          (['OIL', 'DEFENSE', 'FX'] as const).map(type => {
-            const count = SHOCK_ARCS.filter(a => a.type === type).length;
-            if (count === 0) return null;
-            const colors: Record<string, string> = {
-              OIL: '#d97706', DEFENSE: '#22c55e', FX: '#a78bfa',
-            };
-            return (
-              <div
-                key={type}
-                className="flex items-center justify-between px-3"
-                style={{ height: '24px', borderBottom: '1px solid var(--border-dim)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors[type] }} />
-                  <span style={{ ...MONO, fontSize: '9px', color: 'var(--text-2)' }}>{type}</span>
-                </div>
-                <span style={{ ...MONO, fontSize: '9px', color: colors[type] }}>{count} VECTOR{count > 1 ? 'S' : ''}</span>
-              </div>
-            );
-          })
+          <div
+            className="flex items-center justify-center px-3"
+            style={{ height: '24px', borderBottom: '1px solid var(--border-dim)' }}
+          >
+            <span style={{ ...MONO, fontSize: '9px', color: 'var(--text-3)' }}>
+              {selectedEventId ? 'LOADING...' : 'SELECT AN EVENT'}
+            </span>
+          </div>
         )}
 
         {/* Weather section */}

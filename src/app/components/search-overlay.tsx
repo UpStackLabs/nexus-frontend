@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Search, X, TrendingUp, Globe2 } from "lucide-react";
 import { useApp } from "../context";
 import { useEvents, useStocks } from "../../hooks/useBackendData";
-import { stocks as mockStocks, osintEvents as mockOsintEvents } from "./mock-data";
 
 const severityColors: Record<string, string> = {
   CRITICAL: "#c41e3a", HIGH: "#ff9800", MEDIUM: "#2196f3", LOW: "#00c853",
@@ -33,41 +32,27 @@ export function SearchOverlay() {
 
   const q = query.toLowerCase();
 
-  // Use backend stocks if available, else mock
-  const stockList = backendStocks.length > 0
-    ? backendStocks.map(s => ({
-        symbol: s.ticker,
-        name: s.companyName,
-        price: s.price,
-        change: s.priceChange,
-        changePercent: s.priceChangePercent,
-      }))
-    : mockStocks;
+  const stockList = backendStocks.map(s => ({
+    symbol: s.ticker,
+    name: s.companyName,
+    price: s.price,
+    change: s.priceChange,
+    changePercent: s.priceChangePercent,
+  }));
 
   const matchedStocks = q
     ? stockList.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
     : stockList.slice(0, 6);
 
-  // Use backend events if available, else mock
-  const eventList = backendEvents.length > 0
-    ? backendEvents.map(e => ({
-        id: e.id,
-        title: e.title,
-        type: e.type.toUpperCase().replace("_", " "),
-        severity: severityLabel(e.severity),
-        source: e.source.toUpperCase(),
-        impact: 0,
-        backendEventId: e.id,
-      }))
-    : mockOsintEvents.map(e => ({
-        id: String(e.id),
-        title: e.title,
-        type: e.type,
-        severity: e.severity,
-        source: e.source,
-        impact: e.impact,
-        backendEventId: undefined as string | undefined,
-      }));
+  const eventList = backendEvents.map(e => ({
+    id: e.id,
+    title: e.title,
+    type: e.type.toUpperCase().replace("_", " "),
+    severity: severityLabel(e.severity),
+    source: e.source.toUpperCase(),
+    impact: 0,
+    backendEventId: e.id,
+  }));
 
   const matchedEvents = q
     ? eventList.filter((e) => e.title.toLowerCase().includes(q) || e.type.toLowerCase().includes(q))

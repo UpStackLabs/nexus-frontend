@@ -112,6 +112,19 @@ export async function getStockAnalysis(ticker: string): Promise<ApiStockAnalysis
   return fetchJson(`/stocks/${ticker}/analysis`);
 }
 
+export interface StockHistoryPoint {
+  date: string;
+  price: number;
+  volume: number;
+}
+
+export async function getStockHistory(
+  ticker: string,
+  timeframe = '1M',
+): Promise<StockHistoryPoint[]> {
+  return fetchJson(`/stocks/${ticker}/history?timeframe=${timeframe}`);
+}
+
 // ── Globe ────────────────────────────────────────────────────────────────────
 export interface ApiHeatmapEntry {
   country: string;

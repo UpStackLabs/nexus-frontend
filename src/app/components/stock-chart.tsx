@@ -3,12 +3,11 @@ import {
   Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ComposedChart, Bar,
 } from "recharts";
-import { stocks as mockStocks } from "./mock-data";
 import { useStockData } from "../../hooks/useStockData";
 import { useStocks } from "../../hooks/useBackendData";
 import { useChartData } from "../../hooks/useChartData";
 import { useApp } from "../context";
-import { Activity, ChevronDown } from "lucide-react";
+import { Activity, ChevronDown, Loader } from "lucide-react";
 
 const timeframes = ["1D", "1W", "1M", "3M", "1Y"];
 
@@ -33,18 +32,22 @@ export function StockChart() {
   const { selectedSymbol, setSelectedSymbol } = useApp();
   const [selectedTimeframe, setSelectedTimeframe] = useState("1M");
   const { quotes, hasKey } = useStockData();
-  const { stocks: backendStocks } = useStocks();
+  const { stocks: backendStocks, loading: stocksLoading } = useStocks();
 
-  // Build stock list from backend or mock
-  const stockList = backendStocks.length > 0
-    ? backendStocks.map(s => ({ symbol: s.ticker, name: s.companyName, price: s.price, change: s.priceChange, changePercent: s.priceChangePercent }))
-    : mockStocks;
+  // Build stock list from backend
+  const stockList = backendStocks.map(s => ({
+    symbol: s.ticker,
+    name: s.companyName,
+    price: s.price,
+    change: s.priceChange,
+    changePercent: s.priceChangePercent,
+  }));
 
   const selectedStock = stockList.find((s) => s.symbol === selectedSymbol) || stockList[0];
 
-  const livePrice = quotes[selectedSymbol]?.c ?? selectedStock.price;
-  const liveChange = quotes[selectedSymbol]?.d ?? selectedStock.change;
-  const liveChangePct = quotes[selectedSymbol]?.dp ?? selectedStock.changePercent;
+  const livePrice = quotes[selectedSymbol]?.c ?? selectedStock?.price ?? 0;
+  const liveChange = quotes[selectedSymbol]?.d ?? selectedStock?.change ?? 0;
+  const liveChangePct = quotes[selectedSymbol]?.dp ?? selectedStock?.changePercent ?? 0;
 
   const { data, loading } = useChartData(selectedSymbol, selectedTimeframe, livePrice);
 
@@ -60,16 +63,24 @@ export function StockChart() {
           </div>
 
           <div className="relative">
-            <select
-              value={selectedSymbol}
-              onChange={(e) => setSelectedSymbol(e.target.value)}
-              className="bg-[#111111] text-[#d4d4d4] text-[11px] border border-[#2a2a2a] px-2 py-0.5 appearance-none pr-5 cursor-pointer focus:outline-none focus:border-[#c41e3a]"
-            >
-              {stockList.map((s) => (
-                <option key={s.symbol} value={s.symbol}>{s.symbol}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-3 h-3 text-[#505050] absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
+            {stocksLoading ? (
+              <div className="flex items-center gap-1 px-2 py-0.5">
+                <Loader className="w-3 h-3 animate-spin text-[#404040]" />
+              </div>
+            ) : (
+              <>
+                <select
+                  value={selectedSymbol}
+                  onChange={(e) => setSelectedSymbol(e.target.value)}
+                  className="bg-[#111111] text-[#d4d4d4] text-[11px] border border-[#2a2a2a] px-2 py-0.5 appearance-none pr-5 cursor-pointer focus:outline-none focus:border-[#c41e3a]"
+                >
+                  {stockList.map((s) => (
+                    <option key={s.symbol} value={s.symbol}>{s.symbol}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-[#505050] absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </>
+            )}
           </div>
         </div>
 
@@ -79,7 +90,7 @@ export function StockChart() {
             <span className={`text-[10px] ${positive ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
               {positive ? "+" : ""}{(liveChange ?? 0).toFixed(2)} ({positive ? "+" : ""}{(liveChangePct ?? 0).toFixed(2)}%)
             </span>
-            {hasKey && <span className="text-[8px] text-[#404040]">LIVE</span>}
+            {hasKey && <span className="text-[8px] text-[#404040]">FINNHUB</span>}
           </div>
 
           <div className="flex items-center gap-0.5">
@@ -104,6 +115,11 @@ export function StockChart() {
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <span className="text-[9px] text-[#404040] animate-pulse tracking-[0.1em]">LOADING CANDLES...</span>
+          </div>
+        )}
+        {!loading && data.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <span className="text-[9px] text-[#404040] tracking-[0.1em]">NO CHART DATA</span>
           </div>
         )}
         <ResponsiveContainer width="100%" height="100%">

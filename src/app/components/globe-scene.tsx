@@ -1,7 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { globeMarkers as mockMarkers } from "./mock-data";
 import * as api from "../../services/api";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
@@ -13,7 +12,6 @@ const severityColors: Record<string, string> = {
   LOW: "#00c853",
 };
 
-// Map shock intensity (0-1) to a severity label for coloring
 function intensityToSeverity(intensity: number): string {
   if (intensity >= 0.8) return "CRITICAL";
   if (intensity >= 0.6) return "HIGH";
@@ -52,7 +50,7 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const [markerCount, setMarkerCount] = useState(mockMarkers.length);
+  const [markerCount, setMarkerCount] = useState(0);
 
   // Fetch heatmap data and render markers
   useEffect(() => {
@@ -64,7 +62,7 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
     markersRef.current = [];
 
     async function loadMarkers() {
-      let markers: GlobeMarker[] = mockMarkers;
+      let markers: GlobeMarker[] = [];
 
       try {
         const heatmap = await api.getGlobeHeatmap(selectedEventId ?? undefined);
@@ -77,8 +75,8 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
             type: h.direction.toUpperCase(),
           }));
         }
-      } catch {
-        // Backend unavailable — use mock markers
+      } catch (err) {
+        console.error("Failed to load heatmap markers:", err);
       }
 
       setMarkerCount(markers.length);
@@ -163,20 +161,8 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
             ),
           },
         }));
-      } catch {
-        // Fallback: connect mock markers sequentially
-        for (let i = 0; i < mockMarkers.length - 1; i++) {
-          const m1 = mockMarkers[i];
-          const m2 = mockMarkers[i + 1];
-          arcFeatures.push({
-            type: "Feature" as const,
-            properties: { color: "#c41e3a", intensity: 0.5, from: "", to: "" },
-            geometry: {
-              type: "LineString" as const,
-              coordinates: buildArcCoords([m1.lng, m1.lat], [m2.lng, m2.lat]),
-            },
-          });
-        }
+      } catch (err) {
+        console.error("Failed to load arcs:", err);
       }
 
       const data = { type: "FeatureCollection" as const, features: arcFeatures };
