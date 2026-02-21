@@ -1,4 +1,14 @@
 {
+<<<<<<< Updated upstream
+=======
+  "permissions": {
+    "allow": [
+      "Bash(aws s3 ls 2>&1 | head -20)",
+      "Bash(gh secret list --repo UpStackLabs/hackalytics-frontend 2>&1)",
+      "mcp__aws-mcp__aws___call_aws"
+    ]
+  },
+>>>>>>> Stashed changes
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "aws",
