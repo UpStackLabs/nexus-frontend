@@ -49,18 +49,14 @@ interface GlobeSceneProps {
 export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
   const [markerCount, setMarkerCount] = useState(0);
   const [mapReady, setMapReady] = useState(false);
 
-  // Fetch heatmap data and render markers
+  // Fetch heatmap data and render as circle layers (fixed pixel size, no zoom scaling)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-
-    // Clear existing markers
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
 
     async function loadMarkers() {
       let markers: GlobeMarker[] = [];
@@ -82,51 +78,104 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
 
       setMarkerCount(markers.length);
 
-      markers.forEach((marker) => {
-        const color = severityColors[marker.severity] || "#2196f3";
+      const geojson: GeoJSON.FeatureCollection = {
+        type: "FeatureCollection",
+        features: markers.map((m) => ({
+          type: "Feature",
+          properties: {
+            severity: m.severity,
+            color: severityColors[m.severity] || "#2196f3",
+            label: m.label,
+            type: m.type,
+            lat: m.lat,
+            lng: m.lng,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [m.lng, m.lat],
+          },
+        })),
+      };
 
-        const el = document.createElement("div");
-        el.className = "mapbox-marker";
-        el.style.width = "28px";
-        el.style.height = "28px";
-        el.style.position = "relative";
+      if (map!.getSource("markers")) {
+        (map!.getSource("markers") as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        map!.addSource("markers", { type: "geojson", data: geojson });
 
-        const pulse = document.createElement("div");
-        pulse.style.cssText = `
-          position:absolute;inset:0;border-radius:50%;
-          border:1.5px solid ${color};opacity:0.5;
-          animation:marker-pulse 2s ease-out infinite;
-        `;
-        el.appendChild(pulse);
+        // Outer glow layer
+        map!.addLayer({
+          id: "markers-glow",
+          type: "circle",
+          source: "markers",
+          paint: {
+            "circle-radius": 14,
+            "circle-color": ["get", "color"],
+            "circle-opacity": 0.1,
+            "circle-blur": 1,
+          },
+        });
 
-        const dot = document.createElement("div");
-        dot.style.cssText = `
-          position:absolute;top:50%;left:50%;
-          width:10px;height:10px;border-radius:50%;
-          background:${color};transform:translate(-50%,-50%);
-          box-shadow:0 0 8px ${color};
-        `;
-        el.appendChild(dot);
+        // Stroke ring layer
+        map!.addLayer({
+          id: "markers-ring",
+          type: "circle",
+          source: "markers",
+          paint: {
+            "circle-radius": 10,
+            "circle-color": "transparent",
+            "circle-stroke-width": 1.5,
+            "circle-stroke-color": ["get", "color"],
+            "circle-stroke-opacity": 0.4,
+          },
+        });
 
-        const popup = new mapboxgl.Popup({
-          offset: 16,
-          closeButton: false,
-          className: "threat-popup",
-        }).setHTML(
-          `<div style="font-family:monospace;font-size:10px;letter-spacing:0.08em;color:#e0e0e0;padding:2px 0;">
-            <div style="color:${color};font-weight:600;margin-bottom:3px;">[${marker.severity}] ${marker.type}</div>
-            <div style="color:#999;">${marker.label}</div>
-            <div style="color:#555;margin-top:3px;">${marker.lat.toFixed(1)}N ${Math.abs(marker.lng).toFixed(1)}${marker.lng >= 0 ? "E" : "W"}</div>
-          </div>`
-        );
+        // Solid dot layer
+        map!.addLayer({
+          id: "markers-dot",
+          type: "circle",
+          source: "markers",
+          paint: {
+            "circle-radius": 5,
+            "circle-color": ["get", "color"],
+            "circle-opacity": 0.9,
+            "circle-blur": 0.3,
+          },
+        });
 
-        const m = new mapboxgl.Marker({ element: el })
-          .setLngLat([marker.lng, marker.lat])
-          .setPopup(popup)
-          .addTo(map!);
+        // Popup on click
+        map!.on("click", "markers-dot", (e) => {
+          if (!e.features || e.features.length === 0) return;
+          const f = e.features[0];
+          const coords = (f.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+          const props = f.properties!;
+          const color = props.color;
 
-        markersRef.current.push(m);
-      });
+          if (popupRef.current) popupRef.current.remove();
+
+          popupRef.current = new mapboxgl.Popup({
+            offset: 16,
+            closeButton: false,
+            className: "threat-popup",
+          })
+            .setLngLat(coords)
+            .setHTML(
+              `<div style="font-family:monospace;font-size:10px;letter-spacing:0.08em;color:#e0e0e0;padding:2px 0;">
+                <div style="color:${color};font-weight:600;margin-bottom:3px;">[${props.severity}] ${props.type}</div>
+                <div style="color:#999;">${props.label}</div>
+                <div style="color:#555;margin-top:3px;">${Number(props.lat).toFixed(1)}N ${Math.abs(Number(props.lng)).toFixed(1)}${Number(props.lng) >= 0 ? "E" : "W"}</div>
+              </div>`
+            )
+            .addTo(map!);
+        });
+
+        // Pointer cursor on hover
+        map!.on("mouseenter", "markers-dot", () => {
+          map!.getCanvas().style.cursor = "pointer";
+        });
+        map!.on("mouseleave", "markers-dot", () => {
+          map!.getCanvas().style.cursor = "";
+        });
+      }
     }
 
     loadMarkers();
@@ -276,10 +325,6 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
       </div>
 
       <style>{`
-        @keyframes marker-pulse {
-          0% { transform: scale(1); opacity: 0.6; }
-          100% { transform: scale(2.5); opacity: 0; }
-        }
         .mapboxgl-popup-content {
           background: #111 !important;
           border: 1px solid #2a2a2a !important;
