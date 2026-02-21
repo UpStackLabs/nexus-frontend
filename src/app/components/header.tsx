@@ -4,6 +4,7 @@ import { useApp } from '../context';
 import { useEvents } from '../../hooks/useBackendData';
 import { EventSelector } from './event-selector';
 import { SimulationForm } from './simulation-form';
+import { NexusLogo } from './nexus-logo';
 import type { ApiSimulationResult } from '../../services/api';
 
 const MONO: React.CSSProperties = { fontFamily: "'IBM Plex Mono', monospace" };
@@ -42,8 +43,9 @@ export function Header() {
         gap: '0',
       }}
     >
-      {/* Wordmark */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', flexShrink: 0 }}>
+      {/* Logo + Wordmark */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <NexusLogo size={26} />
         <span
           style={{
             ...COND,
