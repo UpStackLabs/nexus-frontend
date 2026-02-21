@@ -1,77 +1,9 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { globeMarkers } from "./mock-data";
 
-interface Point3D {
-  x: number;
-  y: number;
-  z: number;
-}
-
-function latLngTo3D(lat: number, lng: number, radius: number): Point3D {
-  const phi = ((90 - lat) * Math.PI) / 180;
-  const theta = ((lng + 180) * Math.PI) / 180;
-  return {
-    x: -(radius * Math.sin(phi) * Math.cos(theta)),
-    y: radius * Math.cos(phi),
-    z: radius * Math.sin(phi) * Math.sin(theta),
-  };
-}
-
-function rotateY(point: Point3D, angle: number): Point3D {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return {
-    x: point.x * cos + point.z * sin,
-    y: point.y,
-    z: -point.x * sin + point.z * cos,
-  };
-}
-
-function rotateX(point: Point3D, angle: number): Point3D {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return {
-    x: point.x,
-    y: point.y * cos - point.z * sin,
-    z: point.y * sin + point.z * cos,
-  };
-}
-
-function project(
-  point: Point3D,
-  width: number,
-  height: number,
-  fov = 600
-): { x: number; y: number; scale: number } | null {
-  const z = point.z + fov;
-  if (z <= 0) return null;
-  const scale = fov / z;
-  return { x: point.x * scale + width / 2, y: -point.y * scale + height / 2, scale };
-}
-
-function generateContinentDots(): { lat: number; lng: number }[] {
-  const dots: { lat: number; lng: number }[] = [];
-  const regions = [
-    { latMin: 25, latMax: 60, lngMin: -130, lngMax: -70, density: 120 },
-    { latMin: -55, latMax: 10, lngMin: -80, lngMax: -35, density: 80 },
-    { latMin: 35, latMax: 70, lngMin: -10, lngMax: 45, density: 100 },
-    { latMin: -35, latMax: 35, lngMin: -15, lngMax: 50, density: 100 },
-    { latMin: 10, latMax: 65, lngMin: 60, lngMax: 145, density: 140 },
-    { latMin: -40, latMax: -12, lngMin: 115, lngMax: 155, density: 50 },
-    { latMin: 55, latMax: 72, lngMin: 20, lngMax: 180, density: 80 },
-  ];
-  regions.forEach((r) => {
-    for (let i = 0; i < r.density; i++) {
-      dots.push({
-        lat: r.latMin + Math.random() * (r.latMax - r.latMin),
-        lng: r.lngMin + Math.random() * (r.lngMax - r.lngMin),
-      });
-    }
-  });
-  return dots;
-}
-
-const continentDots = generateContinentDots();
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
 
 const severityColors: Record<string, string> = {
   CRITICAL: "#c41e3a",
@@ -80,267 +12,206 @@ const severityColors: Record<string, string> = {
   LOW: "#00c853",
 };
 
+function buildArcCoords(
+  start: [number, number],
+  end: [number, number],
+  steps = 50
+): [number, number][] {
+  const coords: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const lng = start[0] + (end[0] - start[0]) * t;
+    const lat = start[1] + (end[1] - start[1]) * t;
+    coords.push([lng, lat]);
+  }
+  return coords;
+}
+
 export function GlobeScene() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<number>(0);
-  const rotationRef = useRef({ y: 0.3, x: -0.3 });
-  const isDragging = useRef(false);
-  const lastMouse = useRef({ x: 0, y: 0 });
-  const autoRotateRef = useRef(true);
-  const timeRef = useRef(0);
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const rect = container.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-    ctx.scale(dpr, dpr);
-
-    const w = rect.width;
-    const h = rect.height;
-    const radius = Math.min(w, h) * 0.32;
-    const rotY = rotationRef.current.y;
-    const rotX = rotationRef.current.x;
-
-    ctx.fillStyle = "#0a0a0a";
-    ctx.fillRect(0, 0, w, h);
-
-    // Background grid
-    ctx.strokeStyle = "rgba(255,255,255,0.015)";
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i < w; i += 40) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
-    }
-    for (let i = 0; i < h; i += 40) {
-      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
-    }
-
-    // Latitude lines
-    for (let lat = -80; lat <= 80; lat += 20) {
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(30,60,30,0.35)";
-      ctx.lineWidth = 0.5;
-      let started = false;
-      for (let lng = 0; lng <= 360; lng += 3) {
-        const p3d = latLngTo3D(lat, lng, radius);
-        const rotated = rotateX(rotateY(p3d, rotY), rotX);
-        const projected = project(rotated, w, h);
-        if (!projected) continue;
-        if (rotated.z > 0) {
-          if (!started) { ctx.moveTo(projected.x, projected.y); started = true; }
-          else ctx.lineTo(projected.x, projected.y);
-        } else { started = false; }
-      }
-      ctx.stroke();
-    }
-
-    // Longitude lines
-    for (let lng = 0; lng < 360; lng += 20) {
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(30,60,30,0.35)";
-      ctx.lineWidth = 0.5;
-      let started = false;
-      for (let lat = -90; lat <= 90; lat += 3) {
-        const p3d = latLngTo3D(lat, lng, radius);
-        const rotated = rotateX(rotateY(p3d, rotY), rotX);
-        const projected = project(rotated, w, h);
-        if (!projected) continue;
-        if (rotated.z > 0) {
-          if (!started) { ctx.moveTo(projected.x, projected.y); started = true; }
-          else ctx.lineTo(projected.x, projected.y);
-        } else { started = false; }
-      }
-      ctx.stroke();
-    }
-
-    // Continent dots
-    continentDots.forEach((dot) => {
-      const p3d = latLngTo3D(dot.lat, dot.lng, radius);
-      const rotated = rotateX(rotateY(p3d, rotY), rotX);
-      if (rotated.z <= 0) return;
-      const projected = project(rotated, w, h);
-      if (!projected) return;
-      const brightness = Math.max(0.2, rotated.z / radius);
-      ctx.fillStyle = `rgba(40,80,40,${0.5 * brightness})`;
-      ctx.beginPath();
-      ctx.arc(projected.x, projected.y, 1.2 * projected.scale * radius * 0.008, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Event markers with pulse
-    const pulseScale = 1 + Math.sin(timeRef.current * 3) * 0.3;
-    globeMarkers.forEach((marker) => {
-      const p3d = latLngTo3D(marker.lat, marker.lng, radius * 1.02);
-      const rotated = rotateX(rotateY(p3d, rotY), rotX);
-      if (rotated.z <= -radius * 0.1) return;
-      const projected = project(rotated, w, h);
-      if (!projected) return;
-
-      const color = severityColors[marker.severity] || "#2196f3";
-      const alpha = rotated.z > 0 ? 1 : 0.3;
-      const baseSize = 4 * projected.scale * radius * 0.008;
-
-      ctx.beginPath();
-      ctx.arc(projected.x, projected.y, baseSize * pulseScale * 2, 0, Math.PI * 2);
-      ctx.strokeStyle = `${color}${Math.round(alpha * 40).toString(16).padStart(2, "0")}`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      const gradient = ctx.createRadialGradient(projected.x, projected.y, 0, projected.x, projected.y, baseSize * 3);
-      gradient.addColorStop(0, `${color}${Math.round(alpha * 60).toString(16).padStart(2, "0")}`);
-      gradient.addColorStop(1, `${color}00`);
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(projected.x, projected.y, baseSize * 3, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = color;
-      ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      ctx.arc(projected.x, projected.y, baseSize, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-
-    // Connection arcs
-    for (let i = 0; i < globeMarkers.length - 1; i++) {
-      const m1 = globeMarkers[i];
-      const m2 = globeMarkers[i + 1];
-      const steps = 30;
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(196, 30, 58, 0.15)";
-      ctx.lineWidth = 0.8;
-      let started = false;
-      for (let t = 0; t <= steps; t++) {
-        const frac = t / steps;
-        const lat = m1.lat + (m2.lat - m1.lat) * frac;
-        const lng = m1.lng + (m2.lng - m1.lng) * frac;
-        const elevation = 1 + Math.sin(frac * Math.PI) * 0.15;
-        const p3d = latLngTo3D(lat, lng, radius * elevation);
-        const rotated = rotateX(rotateY(p3d, rotY), rotX);
-        if (rotated.z <= 0) { started = false; continue; }
-        const projected = project(rotated, w, h);
-        if (!projected) continue;
-        if (!started) { ctx.moveTo(projected.x, projected.y); started = true; }
-        else ctx.lineTo(projected.x, projected.y);
-      }
-      ctx.stroke();
-    }
-
-    // Orbital rings
-    ctx.strokeStyle = "rgba(196, 30, 58, 0.12)";
-    ctx.lineWidth = 0.8;
-    ctx.setLineDash([4, 8]);
-
-    ctx.beginPath();
-    for (let a = 0; a <= 360; a += 2) {
-      const rad = (a * Math.PI) / 180;
-      const x = Math.cos(rad) * radius * 1.4;
-      const y = Math.sin(rad) * radius * 0.15;
-      const z = Math.sin(rad) * radius * 1.4;
-      const rotated = rotateX(rotateY({ x, y, z }, rotY + 0.3), rotX);
-      const projected = project(rotated, w, h);
-      if (!projected) continue;
-      if (a === 0) ctx.moveTo(projected.x, projected.y);
-      else ctx.lineTo(projected.x, projected.y);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(196, 30, 58, 0.07)";
-    ctx.beginPath();
-    for (let a = 0; a <= 360; a += 2) {
-      const rad = (a * Math.PI) / 180;
-      const x = Math.cos(rad) * radius * 1.6;
-      const y = Math.sin(rad) * radius * 0.3;
-      const z = Math.sin(rad) * radius * 1.6;
-      const rotated = rotateX(rotateY({ x, y, z }, rotY - 0.5), rotX + 0.2);
-      const projected = project(rotated, w, h);
-      if (!projected) continue;
-      if (a === 0) ctx.moveTo(projected.x, projected.y);
-      else ctx.lineTo(projected.x, projected.y);
-    }
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    if (autoRotateRef.current && !isDragging.current) {
-      rotationRef.current.y += 0.003;
-    }
-
-    timeRef.current += 0.016;
-    animRef.current = requestAnimationFrame(draw);
-  }, []);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
-    animRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [draw]);
+    if (!containerRef.current || !MAPBOX_TOKEN) return;
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    isDragging.current = true;
-    lastMouse.current = { x: e.clientX, y: e.clientY };
-    autoRotateRef.current = false;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [20, 20],
+      zoom: 1.5,
+      projection: "mercator",
+      attributionControl: false,
+    });
+
+    mapRef.current = map;
+
+    map.addControl(
+      new mapboxgl.NavigationControl({ showCompass: false }),
+      "top-right"
+    );
+
+    map.on("load", () => {
+      // --- Pulsing marker dots via canvas icons ---
+      globeMarkers.forEach((marker) => {
+        const color = severityColors[marker.severity] || "#2196f3";
+
+        // Outer glow element
+        const el = document.createElement("div");
+        el.className = "mapbox-marker";
+        el.style.width = "28px";
+        el.style.height = "28px";
+        el.style.position = "relative";
+
+        // Pulse ring
+        const pulse = document.createElement("div");
+        pulse.style.cssText = `
+          position:absolute;inset:0;border-radius:50%;
+          border:1.5px solid ${color};opacity:0.5;
+          animation:marker-pulse 2s ease-out infinite;
+        `;
+        el.appendChild(pulse);
+
+        // Core dot
+        const dot = document.createElement("div");
+        dot.style.cssText = `
+          position:absolute;top:50%;left:50%;
+          width:10px;height:10px;border-radius:50%;
+          background:${color};transform:translate(-50%,-50%);
+          box-shadow:0 0 8px ${color};
+        `;
+        el.appendChild(dot);
+
+        const popup = new mapboxgl.Popup({
+          offset: 16,
+          closeButton: false,
+          className: "threat-popup",
+        }).setHTML(
+          `<div style="font-family:monospace;font-size:10px;letter-spacing:0.08em;color:#e0e0e0;padding:2px 0;">
+            <div style="color:${color};font-weight:600;margin-bottom:3px;">[${marker.severity}] ${marker.type}</div>
+            <div style="color:#999;">${marker.label}</div>
+            <div style="color:#555;margin-top:3px;">${marker.lat.toFixed(1)}N ${Math.abs(marker.lng).toFixed(1)}${marker.lng >= 0 ? "E" : "W"}</div>
+          </div>`
+        );
+
+        new mapboxgl.Marker({ element: el })
+          .setLngLat([marker.lng, marker.lat])
+          .setPopup(popup)
+          .addTo(map);
+      });
+
+      // --- Connection arcs ---
+      const arcFeatures = [];
+      for (let i = 0; i < globeMarkers.length - 1; i++) {
+        const m1 = globeMarkers[i];
+        const m2 = globeMarkers[i + 1];
+        arcFeatures.push({
+          type: "Feature" as const,
+          properties: {},
+          geometry: {
+            type: "LineString" as const,
+            coordinates: buildArcCoords(
+              [m1.lng, m1.lat],
+              [m2.lng, m2.lat]
+            ),
+          },
+        });
+      }
+
+      map.addSource("arcs", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: arcFeatures },
+      });
+
+      map.addLayer({
+        id: "arcs-line",
+        type: "line",
+        source: "arcs",
+        paint: {
+          "line-color": "#c41e3a",
+          "line-opacity": 0.25,
+          "line-width": 1,
+          "line-dasharray": [4, 4],
+        },
+      });
+    });
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging.current) return;
-    const dx = e.clientX - lastMouse.current.x;
-    const dy = e.clientY - lastMouse.current.y;
-    rotationRef.current.y += dx * 0.005;
-    rotationRef.current.x += dy * 0.005;
-    lastMouse.current = { x: e.clientX, y: e.clientY };
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    isDragging.current = false;
-    setTimeout(() => { if (!isDragging.current) autoRotateRef.current = true; }, 3000);
-  }, []);
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-[#0a0a0a]">
+        <div className="text-[11px] text-[#505050] tracking-[0.1em] text-center leading-relaxed">
+          <div className="text-[#c41e3a] mb-2">[MAP OFFLINE]</div>
+          <div>Set VITE_MAPBOX_TOKEN in .env.local</div>
+          <div className="mt-1 text-[9px] text-[#353535]">
+            Get a free token at mapbox.com
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div ref={containerRef} className="w-full h-full relative cursor-grab active:cursor-grabbing">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      />
-
-      <div className="absolute top-3 left-3 z-30 text-[10px] tracking-[0.1em]">
+    <div ref={containerRef} className="w-full h-full relative">
+      {/* HUD overlays */}
+      <div className="absolute top-3 left-3 z-30 text-[10px] tracking-[0.1em] pointer-events-none">
         <div className="text-[#505050] mb-0.5">[SCOPE] GLOBAL THREAT MAP</div>
-        <div className="text-[#c41e3a]">{globeMarkers.length} ACTIVE EVENTS TRACKED</div>
-        <div className="text-[#353535] mt-1">DRAG TO ROTATE</div>
+        <div className="text-[#c41e3a]">
+          {globeMarkers.length} ACTIVE EVENTS TRACKED
+        </div>
       </div>
 
-      <div className="absolute bottom-3 left-3 z-30 text-[9px] tracking-[0.08em] space-y-1">
+      <div className="absolute bottom-3 left-3 z-30 text-[9px] tracking-[0.08em] space-y-1 pointer-events-none">
         {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => (
           <div key={sev} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: severityColors[sev] }} />
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: severityColors[sev] }}
+            />
             <span className="text-[#505050]">{sev}</span>
           </div>
         ))}
       </div>
 
-      <div className="absolute bottom-3 right-3 z-30 text-[9px] text-[#353535] tracking-[0.08em] text-right">
+      <div className="absolute bottom-3 right-3 z-30 text-[9px] text-[#353535] tracking-[0.08em] text-right pointer-events-none">
         <div>SRC: MULTI-INT</div>
         <div>REF: 30s CYCLE</div>
-        <div>PROJ: ORTHOGRAPHIC</div>
+        <div>PROJ: MERCATOR</div>
       </div>
 
-      <div className="absolute top-3 right-3 z-30 text-[9px] text-[#404040] tracking-[0.08em] text-right font-mono">
-        <div>ROT_Y: {(rotationRef.current.y % (Math.PI * 2)).toFixed(3)}</div>
-        <div>ROT_X: {rotationRef.current.x.toFixed(3)}</div>
-      </div>
+      <style>{`
+        @keyframes marker-pulse {
+          0% { transform: scale(1); opacity: 0.6; }
+          100% { transform: scale(2.5); opacity: 0; }
+        }
+        .mapboxgl-popup-content {
+          background: #111 !important;
+          border: 1px solid #2a2a2a !important;
+          border-radius: 2px !important;
+          padding: 8px 10px !important;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+        }
+        .mapboxgl-popup-tip {
+          border-top-color: #111 !important;
+        }
+        .mapboxgl-ctrl-group {
+          background: #111 !important;
+          border: 1px solid #2a2a2a !important;
+          border-radius: 2px !important;
+        }
+        .mapboxgl-ctrl-group button {
+          border-color: #2a2a2a !important;
+        }
+        .mapboxgl-ctrl-group button span {
+          filter: invert(1) brightness(0.5) !important;
+        }
+      `}</style>
     </div>
   );
 }
