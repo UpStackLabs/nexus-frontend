@@ -3,8 +3,9 @@ import {
   Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ComposedChart, Bar,
 } from "recharts";
-import { stocks } from "./mock-data";
+import { stocks as mockStocks } from "./mock-data";
 import { useStockData } from "../../hooks/useStockData";
+import { useStocks } from "../../hooks/useBackendData";
 import { useChartData } from "../../hooks/useChartData";
 import { useApp } from "../context";
 import { Activity, ChevronDown } from "lucide-react";
@@ -32,8 +33,14 @@ export function StockChart() {
   const { selectedSymbol, setSelectedSymbol } = useApp();
   const [selectedTimeframe, setSelectedTimeframe] = useState("1M");
   const { quotes, hasKey } = useStockData();
+  const { stocks: backendStocks } = useStocks();
 
-  const selectedStock = stocks.find((s) => s.symbol === selectedSymbol) || stocks[0];
+  // Build stock list from backend or mock
+  const stockList = backendStocks.length > 0
+    ? backendStocks.map(s => ({ symbol: s.ticker, name: s.companyName, price: s.price, change: s.priceChange, changePercent: s.priceChangePercent }))
+    : mockStocks;
+
+  const selectedStock = stockList.find((s) => s.symbol === selectedSymbol) || stockList[0];
 
   const livePrice = quotes[selectedSymbol]?.c ?? selectedStock.price;
   const liveChange = quotes[selectedSymbol]?.d ?? selectedStock.change;
@@ -58,7 +65,7 @@ export function StockChart() {
               onChange={(e) => setSelectedSymbol(e.target.value)}
               className="bg-[#111111] text-[#d4d4d4] text-[11px] border border-[#2a2a2a] px-2 py-0.5 appearance-none pr-5 cursor-pointer focus:outline-none focus:border-[#c41e3a]"
             >
-              {stocks.map((s) => (
+              {stockList.map((s) => (
                 <option key={s.symbol} value={s.symbol}>{s.symbol}</option>
               ))}
             </select>

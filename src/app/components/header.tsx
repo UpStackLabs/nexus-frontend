@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { MessageSquare, Bell } from 'lucide-react';
 import { SHOCK_META, FINNHUB_KEY } from '../../config';
 import { useApp } from '../context';
 import { useEvents } from '../../hooks/useBackendData';
@@ -38,7 +39,7 @@ export function Header() {
   const [clock, setClock] = useState('');
   const [mode, setMode] = useState<Mode>('LIVE');
   const hasFinnhub = Boolean(FINNHUB_KEY);
-  const { selectedEventId, setSelectedEventId } = useApp();
+  const { selectedEventId, setSelectedEventId, setChatOpen, chatOpen, setAlertsOpen } = useApp();
   const { events } = useEvents();
 
   useEffect(() => {
@@ -205,6 +206,50 @@ export function Header() {
             {m}
           </button>
         ))}
+      </div>
+
+      {/* Alert + Chat buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginRight: '10px', flexShrink: 0 }}>
+        <button
+          onClick={() => setAlertsOpen(true)}
+          style={{
+            ...MONO,
+            fontSize: '8px',
+            letterSpacing: '0.08em',
+            padding: '4px 8px',
+            border: '1px solid var(--border-dim)',
+            backgroundColor: 'transparent',
+            color: 'var(--text-3)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+          className="hover:bg-[var(--bg-raised)] transition-colors"
+        >
+          <Bell size={10} />
+          ALERTS
+        </button>
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          style={{
+            ...MONO,
+            fontSize: '8px',
+            letterSpacing: '0.08em',
+            padding: '4px 10px',
+            border: chatOpen ? '1px solid #c42020' : '1px solid var(--border-dim)',
+            backgroundColor: chatOpen ? '#1a0808' : 'transparent',
+            color: chatOpen ? '#c42020' : 'var(--text-3)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+          className="hover:bg-[var(--bg-raised)] transition-colors"
+        >
+          <MessageSquare size={10} />
+          AI CHAT
+        </button>
       </div>
 
       {/* UTC clock */}

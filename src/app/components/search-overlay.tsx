@@ -1,16 +1,26 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, X, TrendingUp, Globe2 } from "lucide-react";
 import { useApp } from "../context";
-import { stocks, osintEvents } from "./mock-data";
+import { useEvents, useStocks } from "../../hooks/useBackendData";
+import { stocks as mockStocks, osintEvents as mockOsintEvents } from "./mock-data";
 
 const severityColors: Record<string, string> = {
   CRITICAL: "#c41e3a", HIGH: "#ff9800", MEDIUM: "#2196f3", LOW: "#00c853",
 };
 
+function severityLabel(severity: number): string {
+  if (severity >= 8) return "CRITICAL";
+  if (severity >= 6) return "HIGH";
+  if (severity >= 4) return "MEDIUM";
+  return "LOW";
+}
+
 export function SearchOverlay() {
-  const { searchOpen, setSearchOpen, setSelectedSymbol, setActiveTab } = useApp();
+  const { searchOpen, setSearchOpen, setSelectedSymbol, setSelectedEventId } = useApp();
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const { events: backendEvents } = useEvents();
+  const { stocks: backendStocks } = useStocks();
 
   useEffect(() => {
     if (searchOpen) {
@@ -23,13 +33,45 @@ export function SearchOverlay() {
 
   const q = query.toLowerCase();
 
+  // Use backend stocks if available, else mock
+  const stockList = backendStocks.length > 0
+    ? backendStocks.map(s => ({
+        symbol: s.ticker,
+        name: s.companyName,
+        price: s.price,
+        change: s.priceChange,
+        changePercent: s.priceChangePercent,
+      }))
+    : mockStocks;
+
   const matchedStocks = q
-    ? stocks.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
-    : stocks.slice(0, 4);
+    ? stockList.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
+    : stockList.slice(0, 6);
+
+  // Use backend events if available, else mock
+  const eventList = backendEvents.length > 0
+    ? backendEvents.map(e => ({
+        id: e.id,
+        title: e.title,
+        type: e.type.toUpperCase().replace("_", " "),
+        severity: severityLabel(e.severity),
+        source: e.source.toUpperCase(),
+        impact: 0,
+        backendEventId: e.id,
+      }))
+    : mockOsintEvents.map(e => ({
+        id: String(e.id),
+        title: e.title,
+        type: e.type,
+        severity: e.severity,
+        source: e.source,
+        impact: e.impact,
+        backendEventId: undefined as string | undefined,
+      }));
 
   const matchedEvents = q
-    ? osintEvents.filter((e) => e.title.toLowerCase().includes(q) || e.type.toLowerCase().includes(q))
-    : osintEvents.slice(0, 3);
+    ? eventList.filter((e) => e.title.toLowerCase().includes(q) || e.type.toLowerCase().includes(q))
+    : eventList.slice(0, 4);
 
   const hasResults = matchedStocks.length > 0 || matchedEvents.length > 0;
 
@@ -53,7 +95,7 @@ export function SearchOverlay() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search stocks, events, symbols..."
             className="flex-1 bg-transparent text-[#d4d4d4] text-[13px] outline-none placeholder-[#404040]"
-            style={{ fontFamily: "'Geist Mono', monospace" }}
+            style={{ fontFamily: "'IBM Plex Mono', monospace" }}
           />
           <div className="flex items-center gap-2">
             <span className="text-[9px] text-[#353535] border border-[#252525] px-1.5 py-0.5">ESC</span>
@@ -76,14 +118,14 @@ export function SearchOverlay() {
             <div>
               <div className="px-4 py-2 text-[9px] text-[#404040] tracking-[0.12em] border-b border-[#141414] bg-[#080808]">
                 STOCKS
+                {backendStocks.length > 0 && <span className="ml-2 text-[#00c853]">LIVE</span>}
               </div>
-              {matchedStocks.map((s) => (
+              {matchedStocks.slice(0, 8).map((s) => (
                 <button
                   key={s.symbol}
                   className="w-full flex items-center gap-4 px-4 py-2.5 hover:bg-[#141414] border-b border-[#141414] text-left transition-colors"
                   onClick={() => {
                     setSelectedSymbol(s.symbol);
-                    setActiveTab("MARKETS");
                     setSearchOpen(false);
                   }}
                 >
@@ -104,13 +146,16 @@ export function SearchOverlay() {
             <div>
               <div className="px-4 py-2 text-[9px] text-[#404040] tracking-[0.12em] border-b border-[#141414] bg-[#080808]">
                 INTELLIGENCE EVENTS
+                {backendEvents.length > 0 && <span className="ml-2 text-[#00c853]">LIVE</span>}
               </div>
               {matchedEvents.map((e) => (
                 <button
                   key={e.id}
                   className="w-full flex items-start gap-4 px-4 py-2.5 hover:bg-[#141414] border-b border-[#141414] text-left transition-colors"
                   onClick={() => {
-                    setActiveTab("INTEL");
+                    if (e.backendEventId) {
+                      setSelectedEventId(e.backendEventId);
+                    }
                     setSearchOpen(false);
                   }}
                 >
@@ -123,9 +168,11 @@ export function SearchOverlay() {
                       <span className="text-[9px] text-[#353535]">{e.source}</span>
                     </div>
                   </div>
-                  <span className={`text-[11px] shrink-0 ${e.impact >= 0 ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
-                    {e.impact > 0 ? "+" : ""}{e.impact}%
-                  </span>
+                  {e.impact !== 0 && (
+                    <span className={`text-[11px] shrink-0 ${e.impact >= 0 ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
+                      {e.impact > 0 ? "+" : ""}{e.impact}%
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -134,10 +181,9 @@ export function SearchOverlay() {
           {/* Footer hint */}
           {!query && (
             <div className="px-4 py-2 text-[9px] text-[#303030] flex items-center gap-3">
-              <span>↵ select</span>
-              <span>↑↓ navigate</span>
+              <span>select</span>
               <span>ESC close</span>
-              <span className="ml-auto">⌘K to open</span>
+              <span className="ml-auto">Cmd+K to open</span>
             </div>
           )}
         </div>

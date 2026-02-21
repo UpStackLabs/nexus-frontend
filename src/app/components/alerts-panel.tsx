@@ -1,7 +1,8 @@
 import { X, Bell, AlertCircle } from "lucide-react";
 import { useApp } from "../context";
 import { useNewsData } from "../../hooks/useNewsData";
-import { osintEvents } from "./mock-data";
+import { useEvents } from "../../hooks/useBackendData";
+import { osintEvents as mockOsintEvents } from "./mock-data";
 
 const SEV_COLORS: Record<string, string> = {
   CRITICAL: "#c41e3a",
@@ -9,6 +10,25 @@ const SEV_COLORS: Record<string, string> = {
   MEDIUM: "#2196f3",
   LOW: "#00c853",
 };
+
+function severityLabel(severity: number): string {
+  if (severity >= 8) return "CRITICAL";
+  if (severity >= 6) return "HIGH";
+  if (severity >= 4) return "MEDIUM";
+  return "LOW";
+}
+
+function mapEventType(type: string): string {
+  const typeMap: Record<string, string> = {
+    military: "GEOPOLITICAL",
+    geopolitical: "GEOPOLITICAL",
+    economic: "ECONOMIC",
+    natural_disaster: "WEATHER",
+    cyber: "CYBER",
+    supply_chain: "SUPPLY_CHAIN",
+  };
+  return typeMap[type.toLowerCase()] ?? type.toUpperCase();
+}
 
 function timeAgo(ms: number): string {
   const diff = Date.now() - ms;
@@ -21,10 +41,26 @@ function timeAgo(ms: number): string {
 export function AlertsPanel() {
   const { alertsOpen, setAlertsOpen } = useApp();
   const { news, loading } = useNewsData();
+  const { events: backendEvents } = useEvents();
 
   if (!alertsOpen) return null;
 
-  const totalAlerts = osintEvents.length + Math.min(news.length, 10);
+  // Use backend events if available, otherwise fall back to mock
+  const alerts = backendEvents.length > 0
+    ? backendEvents.map(e => ({
+        id: e.id,
+        type: mapEventType(e.type),
+        severity: severityLabel(e.severity),
+        title: e.title,
+        description: e.description,
+        timestamp: e.timestamp,
+        source: e.source.toUpperCase(),
+        impact: 0,
+        impactedStocks: e.affectedTickers,
+      }))
+    : mockOsintEvents;
+
+  const totalAlerts = alerts.length + Math.min(news.length, 10);
 
   return (
     <div
@@ -65,9 +101,12 @@ export function AlertsPanel() {
           {/* Intelligence Alerts */}
           <div className="px-3 py-1.5 text-[9px] text-[#404040] tracking-[0.12em] bg-[#080808] border-b border-[#141414]">
             INTELLIGENCE ALERTS
+            {backendEvents.length > 0 && (
+              <span className="ml-2 text-[#00c853]">LIVE</span>
+            )}
           </div>
 
-          {osintEvents.map((event) => (
+          {alerts.map((event) => (
             <div
               key={event.id}
               className="px-4 py-3 border-b border-[#141414] hover:bg-[#0e0e0e] transition-colors"
@@ -109,6 +148,15 @@ export function AlertsPanel() {
                       </span>
                     )}
                   </div>
+                  {'impactedStocks' in event && (event as { impactedStocks: string[] }).impactedStocks.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {(event as { impactedStocks: string[] }).impactedStocks.slice(0, 5).map((s: string) => (
+                        <span key={s} className="text-[8px] px-1 py-0.5 bg-[#1a1a1a] text-[#606060] border border-[#252525]">
+                          ${s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

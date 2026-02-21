@@ -9,6 +9,8 @@ interface AppState {
   setSearchOpen: (v: boolean) => void;
   alertsOpen: boolean;
   setAlertsOpen: (v: boolean) => void;
+  chatOpen: boolean;
+  setChatOpen: (v: boolean) => void;
   selectedSymbol: string;
   setSelectedSymbol: (sym: string) => void;
   selectedEventId: string | null;
@@ -21,6 +23,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<NavTab>("DASHBOARD");
   const [searchOpen, setSearchOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState("NVDA");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
@@ -29,6 +32,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       activeTab, setActiveTab,
       searchOpen, setSearchOpen,
       alertsOpen, setAlertsOpen,
+      chatOpen, setChatOpen,
       selectedSymbol, setSelectedSymbol,
       selectedEventId, setSelectedEventId,
     }}>

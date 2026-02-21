@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Cpu, Wifi, Zap, Database, Activity, Shield } from "lucide-react";
-import { systemStatus } from "./mock-data";
+import * as api from "../../services/api";
+import { useEvents } from "../../hooks/useBackendData";
+import { systemStatus as mockStatus } from "./mock-data";
 
 const NODE_ID = `NX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
@@ -24,14 +26,40 @@ function MetricBar({ value, max, color }: { value: number; max: number; color: s
 }
 
 export function SystemMetrics() {
-  const [signals, setSignals] = useState(systemStatus.signalsCaptured);
+  const { events } = useEvents();
+  const [signals, setSignals] = useState(mockStatus.signalsCaptured);
+  const [health, setHealth] = useState<{ status: string; uptime: number; timestamp: string } | null>(null);
+  const [backendOnline, setBackendOnline] = useState(false);
 
+  // Fetch health from backend
+  useEffect(() => {
+    const fetchHealth = () => {
+      api.getHealth()
+        .then(h => {
+          setHealth(h);
+          setBackendOnline(true);
+        })
+        .catch(() => {
+          setBackendOnline(false);
+        });
+    };
+    fetchHealth();
+    const id = setInterval(fetchHealth, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Increment signals counter
   useEffect(() => {
     const interval = setInterval(() => {
       setSignals((prev) => prev + Math.floor(Math.random() * 3));
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  const activeAlerts = events.length > 0 ? events.length : mockStatus.activeAlerts;
+  const dataFeeds = backendOnline ? 47 : mockStatus.dataFeeds;
+  const uptime = health ? formatUptime(health.uptime) : mockStatus.uptime;
+  const lastSync = health ? health.timestamp : mockStatus.lastSync;
 
   return (
     <div className="h-full flex flex-col">
@@ -41,8 +69,10 @@ export function SystemMetrics() {
           <span className="text-[10px] text-[#707070] tracking-[0.12em]">SYSTEM STATUS</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 bg-[#00c853] rounded-full" />
-          <span className="text-[9px] text-[#00c853]">OPERATIONAL</span>
+          <div className={`w-1.5 h-1.5 rounded-full ${backendOnline ? "bg-[#00c853]" : "bg-[#ff9800]"}`} />
+          <span className={`text-[9px] ${backendOnline ? "text-[#00c853]" : "text-[#ff9800]"}`}>
+            {backendOnline ? "OPERATIONAL" : "DEMO MODE"}
+          </span>
         </div>
       </div>
 
@@ -64,9 +94,9 @@ export function SystemMetrics() {
               <Database className="w-3 h-3 text-[#2196f3]" />
               <span className="text-[9px] text-[#505050] tracking-[0.08em]">ACTIVE DATA FEEDS</span>
             </div>
-            <span className="text-[14px] text-[#d4d4d4]">{systemStatus.dataFeeds}</span>
+            <span className="text-[14px] text-[#d4d4d4]">{dataFeeds}</span>
           </div>
-          <MetricBar value={systemStatus.dataFeeds} max={60} color="#2196f3" />
+          <MetricBar value={dataFeeds} max={60} color="#2196f3" />
         </div>
 
         <div className="p-2 bg-[#0e0e0e] border border-[#1a1a1a]">
@@ -75,9 +105,9 @@ export function SystemMetrics() {
               <Shield className="w-3 h-3 text-[#c41e3a]" />
               <span className="text-[9px] text-[#505050] tracking-[0.08em]">ACTIVE ALERTS</span>
             </div>
-            <span className="text-[14px] text-[#c41e3a]">{systemStatus.activeAlerts}</span>
+            <span className="text-[14px] text-[#c41e3a]">{activeAlerts}</span>
           </div>
-          <MetricBar value={systemStatus.activeAlerts} max={20} color="#c41e3a" />
+          <MetricBar value={activeAlerts} max={20} color="#c41e3a" />
         </div>
 
         <div className="p-2 bg-[#0e0e0e] border border-[#1a1a1a]">
@@ -86,7 +116,7 @@ export function SystemMetrics() {
               <Activity className="w-3 h-3 text-[#00c853]" />
               <span className="text-[9px] text-[#505050] tracking-[0.08em]">SYSTEM UPTIME</span>
             </div>
-            <span className="text-[14px] text-[#00c853]">{systemStatus.uptime}</span>
+            <span className="text-[14px] text-[#00c853]">{uptime}</span>
           </div>
         </div>
 
@@ -97,7 +127,7 @@ export function SystemMetrics() {
               <span className="text-[9px] text-[#505050] tracking-[0.08em]">LAST SYNC</span>
             </div>
             <span className="text-[10px] text-[#707070]">
-              {new Date(systemStatus.lastSync).toLocaleTimeString("en-US", {
+              {new Date(lastSync).toLocaleTimeString("en-US", {
                 hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
               })}{" "}UTC
             </span>
@@ -115,4 +145,12 @@ export function SystemMetrics() {
       </div>
     </div>
   );
+}
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  if (days > 0) return `${days}d ${hours}h`;
+  const mins = Math.floor((seconds % 3600) / 60);
+  return `${hours}h ${mins}m`;
 }
