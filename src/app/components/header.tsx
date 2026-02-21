@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 import { SHOCK_META, FINNHUB_KEY } from '../../config';
+import { useApp } from '../context';
+import { useEvents } from '../../hooks/useBackendData';
+import { EventSelector } from './event-selector';
+import { SimulationForm } from './simulation-form';
+import { OsintUpload } from './osint-upload';
+import type { ApiSimulationResult } from '../../services/api';
 
 const MONO: React.CSSProperties = { fontFamily: "'IBM Plex Mono', monospace" };
 const COND: React.CSSProperties = { fontFamily: "'IBM Plex Sans Condensed', sans-serif" };
@@ -32,6 +38,8 @@ export function Header() {
   const [clock, setClock] = useState('');
   const [mode, setMode] = useState<Mode>('LIVE');
   const hasFinnhub = Boolean(FINNHUB_KEY);
+  const { selectedEventId, setSelectedEventId } = useApp();
+  const { events } = useEvents();
 
   useEffect(() => {
     const tick = () => {
@@ -92,44 +100,58 @@ export function Header() {
       {/* Divider */}
       <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--border)', margin: '0 12px', flexShrink: 0 }} />
 
-      {/* Active event badge */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '2px 8px',
-          border: '1px solid var(--red-dim)',
-          backgroundColor: '#0f0404',
-          flexShrink: 0,
-        }}
-      >
-        <div
-          className="animate-pulse"
-          style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--red)', flexShrink: 0 }}
+      {/* Event selector (replaces static badge when backend has events) */}
+      {events.length > 0 ? (
+        <EventSelector
+          events={events}
+          selectedEventId={selectedEventId}
+          onSelect={setSelectedEventId}
         />
-        <span style={{ ...MONO, fontSize: '8px', color: 'var(--red)', letterSpacing: '0.1em' }}>
-          {SHOCK_META.id}
-        </span>
-        <span style={{ ...MONO, fontSize: '8px', color: 'var(--text-3)' }}>|</span>
-        <span
+      ) : (
+        <div
           style={{
-            ...MONO,
-            fontSize: '8px',
-            color: 'var(--text-2)',
-            letterSpacing: '0.04em',
-            maxWidth: '260px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '2px 8px',
+            border: '1px solid var(--red-dim)',
+            backgroundColor: '#0f0404',
+            flexShrink: 0,
           }}
         >
-          {SHOCK_META.title.toUpperCase()}
-        </span>
-        <span style={{ ...MONO, fontSize: '8px', color: 'var(--text-3)' }}>|</span>
-        <span style={{ ...MONO, fontSize: '8px', color: 'var(--red-bright)', letterSpacing: '0.08em' }}>
-          {SHOCK_META.severity}
-        </span>
+          <div
+            className="animate-pulse"
+            style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--red)', flexShrink: 0 }}
+          />
+          <span style={{ ...MONO, fontSize: '8px', color: 'var(--red)', letterSpacing: '0.1em' }}>
+            {SHOCK_META.id}
+          </span>
+          <span style={{ ...MONO, fontSize: '8px', color: 'var(--text-3)' }}>|</span>
+          <span
+            style={{
+              ...MONO,
+              fontSize: '8px',
+              color: 'var(--text-2)',
+              letterSpacing: '0.04em',
+              maxWidth: '260px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {SHOCK_META.title.toUpperCase()}
+          </span>
+          <span style={{ ...MONO, fontSize: '8px', color: 'var(--text-3)' }}>|</span>
+          <span style={{ ...MONO, fontSize: '8px', color: 'var(--red-bright)', letterSpacing: '0.08em' }}>
+            {SHOCK_META.severity}
+          </span>
+        </div>
+      )}
+
+      {/* Action buttons: Simulate + OSINT */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px', flexShrink: 0 }}>
+        <SimulationForm onResult={(_r: ApiSimulationResult) => { /* globe will update via WebSocket */ }} />
+        <OsintUpload />
       </div>
 
       <div style={{ flex: 1 }} />

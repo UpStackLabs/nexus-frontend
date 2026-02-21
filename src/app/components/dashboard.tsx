@@ -6,6 +6,7 @@ import { WeatherPanel } from "./weather-panel";
 import { EventImpact } from "./event-impact";
 import { StockChart } from "./stock-chart";
 import { SystemMetrics } from "./system-metrics";
+import { SectorDrilldown } from "./sector-drilldown";
 import { useStockData } from "../../hooks/useStockData";
 import { useFxData } from "../../hooks/useFxData";
 
@@ -126,10 +127,13 @@ export function Dashboard() {
 
         {/* Right Panel */}
         <div className="w-[240px] border-l border-[#1e1e1e] flex flex-col shrink-0">
-          <div className="flex-1 min-h-0 border-b border-[#1e1e1e]">
+          <div className="flex-1 min-h-0 border-b border-[#1e1e1e] overflow-y-auto">
             <StockPanel />
           </div>
-          <div className="h-[320px] shrink-0">
+          <div className="h-[200px] shrink-0 border-b border-[#1e1e1e] overflow-y-auto">
+            <SectorDrilldown />
+          </div>
+          <div className="h-[120px] shrink-0">
             <SystemMetrics />
           </div>
         </div>

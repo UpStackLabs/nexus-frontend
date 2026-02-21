@@ -11,6 +11,8 @@ interface AppState {
   setAlertsOpen: (v: boolean) => void;
   selectedSymbol: string;
   setSelectedSymbol: (sym: string) => void;
+  selectedEventId: string | null;
+  setSelectedEventId: (id: string | null) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -20,6 +22,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState("NVDA");
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   return (
     <AppContext.Provider value={{
@@ -27,6 +30,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchOpen, setSearchOpen,
       alertsOpen, setAlertsOpen,
       selectedSymbol, setSelectedSymbol,
+      selectedEventId, setSelectedEventId,
     }}>
       {children}
     </AppContext.Provider>

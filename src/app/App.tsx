@@ -3,6 +3,7 @@ import { AppProvider, useApp } from "./context";
 import { Dashboard } from "./components/dashboard";
 import { SearchOverlay } from "./components/search-overlay";
 import { AlertsPanel } from "./components/alerts-panel";
+import { ChatPanel } from "./components/chat-panel";
 
 function AppInner() {
   const { setSearchOpen } = useApp();
@@ -25,6 +26,7 @@ function AppInner() {
       <Dashboard />
       <SearchOverlay />
       <AlertsPanel />
+      <ChatPanel />
     </>
   );
 }
