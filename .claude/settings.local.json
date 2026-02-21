@@ -1,12 +1,10 @@
 {
-  "permissions": {
-    "allow": [
-    ]
-  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "aws-mcp",
+    "aws",
     "github",
-    "figma-remote-mcp"
-  ]
+    "google-drive",
+    "jira"
+  ],
+  "outputStyle": "default"
 }
