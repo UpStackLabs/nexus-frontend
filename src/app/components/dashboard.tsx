@@ -1,12 +1,8 @@
 import { Header } from "./header";
 import { GlobeScene } from "./globe-scene";
-import { StockPanel } from "./stock-panel";
 import { OsintFeed } from "./osint-feed";
-import { WeatherPanel } from "./weather-panel";
-import { EventImpact } from "./event-impact";
 import { StockChart } from "./stock-chart";
-import { SystemMetrics } from "./system-metrics";
-import { SectorDrilldown } from "./sector-drilldown";
+import { StocksBySector } from "./stocks-by-sector";
 import { useStockData } from "../../hooks/useStockData";
 import { useFxData } from "../../hooks/useFxData";
 import { useSocket } from "../../hooks/useSocket";
@@ -30,7 +26,6 @@ function TickerBar() {
   const { quotes } = useStockData();
   const { rates } = useFxData();
 
-  // Build tickers from live data; falls back to empty list while loading
   const stockTickers = Object.entries(quotes).map(([sym, q]) => ({
     sym,
     val: `$${q.c.toFixed(2)}`,
@@ -38,8 +33,6 @@ function TickerBar() {
     positive: q.dp >= 0,
   }));
 
-  // FX rates: open.er-api.com returns units-of-currency per 1 USD
-  // Invert EUR/GBP so they display as USD-per-unit (standard convention)
   const fxTickers = rates
     .filter((r) => r.rate > 0)
     .map((r) => {
@@ -54,7 +47,6 @@ function TickerBar() {
     });
 
   const tickers = [...stockTickers, ...fxTickers];
-  // While live data is loading, show placeholder dashes
   const display = tickers.length > 0 ? [...tickers, ...tickers] : [];
 
   if (display.length === 0) {
@@ -92,55 +84,34 @@ export function Dashboard() {
 
       {/* Main Content Grid */}
       <div className="flex-1 flex min-h-0">
-        {/* Left Panel - OSINT Feed */}
+        {/* Left Panel - OSINT / News Feed */}
         <div className="w-[320px] border-r border-[#1e1e1e] flex flex-col shrink-0">
           <OsintFeed />
         </div>
 
         {/* Center Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Row: Globe + Stock Chart */}
-          <div className="flex-1 flex min-h-0">
-            {/* Globe */}
-            <div className="flex-1 relative border-r border-[#141414]">
-              <GlobeScene selectedEventId={selectedEventId} />
-              {/* Corner markers */}
-              <div className="pointer-events-none absolute inset-0 z-20">
-                <div className="absolute top-3 left-3 w-4 h-4 border-t border-l border-[#2a2a2a]" />
-                <div className="absolute top-3 right-3 w-4 h-4 border-t border-r border-[#2a2a2a]" />
-                <div className="absolute bottom-3 left-3 w-4 h-4 border-b border-l border-[#2a2a2a]" />
-                <div className="absolute bottom-3 right-3 w-4 h-4 border-b border-r border-[#2a2a2a]" />
-              </div>
-            </div>
-
-            {/* Stock Chart */}
-            <div className="w-[45%] shrink-0">
-              <StockChart />
+          {/* Globe - top ~55% */}
+          <div className="flex-[55] relative min-h-0">
+            <GlobeScene selectedEventId={selectedEventId} />
+            {/* Corner markers */}
+            <div className="pointer-events-none absolute inset-0 z-20">
+              <div className="absolute top-3 left-3 w-4 h-4 border-t border-l border-[#2a2a2a]" />
+              <div className="absolute top-3 right-3 w-4 h-4 border-t border-r border-[#2a2a2a]" />
+              <div className="absolute bottom-3 left-3 w-4 h-4 border-b border-l border-[#2a2a2a]" />
+              <div className="absolute bottom-3 right-3 w-4 h-4 border-b border-r border-[#2a2a2a]" />
             </div>
           </div>
 
-          {/* Bottom Row: Event Impact + Weather */}
-          <div className="h-[280px] flex border-t border-[#1e1e1e] shrink-0">
-            <div className="flex-1 border-r border-[#141414]">
-              <EventImpact />
-            </div>
-            <div className="w-[380px] shrink-0">
-              <WeatherPanel />
-            </div>
+          {/* Stock Chart with Prediction - bottom ~45% */}
+          <div className="flex-[45] border-t border-[#1e1e1e] min-h-0">
+            <StockChart />
           </div>
         </div>
 
-        {/* Right Panel */}
-        <div className="w-[240px] border-l border-[#1e1e1e] flex flex-col shrink-0">
-          <div className="flex-1 min-h-0 border-b border-[#1e1e1e] overflow-y-auto">
-            <StockPanel />
-          </div>
-          <div className="h-[200px] shrink-0 border-b border-[#1e1e1e] overflow-y-auto">
-            <SectorDrilldown />
-          </div>
-          <div className="h-[120px] shrink-0">
-            <SystemMetrics />
-          </div>
+        {/* Right Panel - Stocks by Sector */}
+        <div className="w-[300px] border-l border-[#1e1e1e] flex flex-col shrink-0">
+          <StocksBySector />
         </div>
       </div>
 

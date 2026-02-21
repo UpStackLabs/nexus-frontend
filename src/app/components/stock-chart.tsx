@@ -1,25 +1,52 @@
 import { useState } from "react";
 import {
   Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ComposedChart, Bar,
+  ResponsiveContainer, ComposedChart, Bar, ReferenceLine,
 } from "recharts";
 import { useStockData } from "../../hooks/useStockData";
 import { useStocks } from "../../hooks/useBackendData";
 import { useChartData } from "../../hooks/useChartData";
+import { usePrediction } from "../../hooks/usePrediction";
 import { useApp } from "../context";
-import { Activity, ChevronDown, Loader } from "lucide-react";
+import { Activity, ChevronDown, Loader, Brain } from "lucide-react";
 
 const timeframes = ["1D", "1W", "1M", "3M", "1Y"];
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+interface ChartPoint {
+  date: string;
+  price?: number;
+  volume?: number;
+  predicted?: number;
+  upper?: number;
+  lower?: number;
+  isToday?: boolean;
+}
+
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { dataKey: string; value: number; color: string }[]; label?: string }) {
   if (active && payload && payload.length) {
+    const price = payload.find(p => p.dataKey === "price");
+    const predicted = payload.find(p => p.dataKey === "predicted");
+    const volume = payload.find(p => p.dataKey === "volume");
+    const upper = payload.find(p => p.dataKey === "upper");
+    const lower = payload.find(p => p.dataKey === "lower");
+
     return (
       <div className="bg-[#111111] border border-[#2a2a2a] px-3 py-2">
         <p className="text-[10px] text-[#707070] mb-1">{label}</p>
-        <p className="text-[12px] text-[#d4d4d4]">${payload[0]?.value?.toFixed(2)}</p>
-        {payload[1] && (
+        {price && <p className="text-[12px] text-[#d4d4d4]">${price.value?.toFixed(2)}</p>}
+        {predicted && (
+          <p className="text-[11px] text-[#7c4dff]">
+            Predicted: ${predicted.value?.toFixed(2)}
+          </p>
+        )}
+        {upper && lower && (
           <p className="text-[9px] text-[#505050]">
-            Vol: {(payload[1].value / 1000000).toFixed(1)}M
+            Band: ${lower.value?.toFixed(2)} – ${upper.value?.toFixed(2)}
+          </p>
+        )}
+        {volume && (
+          <p className="text-[9px] text-[#505050]">
+            Vol: {(volume.value / 1000000).toFixed(1)}M
           </p>
         )}
       </div>
@@ -31,10 +58,10 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export function StockChart() {
   const { selectedSymbol, setSelectedSymbol } = useApp();
   const [selectedTimeframe, setSelectedTimeframe] = useState("1M");
+  const [showPrediction, setShowPrediction] = useState(true);
   const { quotes, hasKey } = useStockData();
   const { stocks: backendStocks, loading: stocksLoading } = useStocks();
 
-  // Build stock list from backend
   const stockList = backendStocks.map(s => ({
     symbol: s.ticker,
     name: s.companyName,
@@ -49,12 +76,54 @@ export function StockChart() {
   const liveChange = quotes[selectedSymbol]?.d ?? selectedStock?.change ?? 0;
   const liveChangePct = quotes[selectedSymbol]?.dp ?? selectedStock?.changePercent ?? 0;
 
-  const { data, loading } = useChartData(selectedSymbol, selectedTimeframe, livePrice);
+  const { data: historyData, loading: historyLoading } = useChartData(selectedSymbol, selectedTimeframe, livePrice);
+  const { data: prediction, loading: predictionLoading } = usePrediction(selectedSymbol);
 
   const positive = (liveChange ?? 0) >= 0;
 
+  // Merge historical + prediction data
+  const mergedData: ChartPoint[] = [
+    ...historyData.map((p) => ({
+      date: p.date,
+      price: p.price,
+      volume: p.volume,
+    })),
+  ];
+
+  // Add "today" marker and prediction data
+  const todayDate = new Date().toISOString().slice(5, 10).replace("-", "/");
+
+  if (showPrediction && prediction?.trajectory) {
+    // Add today divider
+    mergedData.push({
+      date: todayDate,
+      price: livePrice,
+      predicted: livePrice,
+      upper: livePrice,
+      lower: livePrice,
+      isToday: true,
+    });
+
+    // Add prediction points
+    for (const pt of prediction.trajectory) {
+      mergedData.push({
+        date: pt.date.slice(5).replace("-", "/"),
+        predicted: pt.price,
+        upper: pt.upper,
+        lower: pt.lower,
+      });
+    }
+  }
+
+  const loading = historyLoading || predictionLoading;
+
+  // Predicted end price
+  const lastPred = prediction?.trajectory?.[prediction.trajectory.length - 1];
+  const predChange = lastPred ? ((lastPred.price - livePrice) / livePrice * 100) : null;
+
   return (
     <div className="h-full flex flex-col">
+      {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[#1e1e1e]">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -93,6 +162,19 @@ export function StockChart() {
             {hasKey && <span className="text-[8px] text-[#404040]">FINNHUB</span>}
           </div>
 
+          {/* Prediction toggle */}
+          <button
+            onClick={() => setShowPrediction(!showPrediction)}
+            className={`flex items-center gap-1 px-2 py-0.5 text-[9px] border transition-colors ${
+              showPrediction
+                ? "text-[#7c4dff] bg-[#7c4dff]/10 border-[#7c4dff]/30"
+                : "text-[#505050] border-transparent hover:text-[#808080]"
+            }`}
+          >
+            <Brain className="w-3 h-3" />
+            AI
+          </button>
+
           <div className="flex items-center gap-0.5">
             {timeframes.map((tf) => (
               <button
@@ -111,23 +193,32 @@ export function StockChart() {
         </div>
       </div>
 
+      {/* Chart */}
       <div className="flex-1 px-2 pt-2 min-h-0 relative">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <span className="text-[9px] text-[#404040] animate-pulse tracking-[0.1em]">LOADING CANDLES...</span>
           </div>
         )}
-        {!loading && data.length === 0 && (
+        {!loading && mergedData.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <span className="text-[9px] text-[#404040] tracking-[0.1em]">NO CHART DATA</span>
           </div>
         )}
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+          <ComposedChart data={mergedData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={positive ? "#00c853" : "#c41e3a"} stopOpacity={0.2} />
                 <stop offset="100%" stopColor={positive ? "#00c853" : "#c41e3a"} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="predGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#7c4dff" stopOpacity={0.15} />
+                <stop offset="100%" stopColor="#7c4dff" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="bandGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#7c4dff" stopOpacity={0.08} />
+                <stop offset="100%" stopColor="#7c4dff" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#141414" />
@@ -155,7 +246,11 @@ export function StockChart() {
               tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`}
             />
             <Tooltip content={<CustomTooltip />} />
+
+            {/* Volume bars */}
             <Bar yAxisId="volume" dataKey="volume" fill="#1a1a1a" opacity={0.5} radius={[1, 1, 0, 0]} />
+
+            {/* Historical price */}
             <Area
               yAxisId="price"
               type="monotone"
@@ -164,10 +259,84 @@ export function StockChart() {
               strokeWidth={1.5}
               fill="url(#priceGradient)"
               dot={false}
+              connectNulls={false}
             />
+
+            {/* Confidence band */}
+            {showPrediction && (
+              <>
+                <Area
+                  yAxisId="price"
+                  type="monotone"
+                  dataKey="upper"
+                  stroke="none"
+                  fill="url(#bandGradient)"
+                  dot={false}
+                  connectNulls={false}
+                />
+                <Area
+                  yAxisId="price"
+                  type="monotone"
+                  dataKey="lower"
+                  stroke="none"
+                  fill="transparent"
+                  dot={false}
+                  connectNulls={false}
+                />
+              </>
+            )}
+
+            {/* Prediction line */}
+            {showPrediction && (
+              <Area
+                yAxisId="price"
+                type="monotone"
+                dataKey="predicted"
+                stroke="#7c4dff"
+                strokeWidth={1.5}
+                strokeDasharray="6 3"
+                fill="url(#predGradient)"
+                dot={false}
+                connectNulls={false}
+              />
+            )}
+
+            {/* Today reference line */}
+            {showPrediction && prediction && (
+              <ReferenceLine
+                yAxisId="price"
+                x={todayDate}
+                stroke="#7c4dff"
+                strokeDasharray="3 3"
+                strokeOpacity={0.5}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {/* AI Summary Bar */}
+      {showPrediction && prediction && (
+        <div className="px-3 py-2 border-t border-[#1e1e1e] bg-[#0c0c0c]">
+          <div className="flex items-center gap-2 mb-1">
+            <Brain className="w-3 h-3 text-[#7c4dff]" />
+            <span className="text-[9px] text-[#7c4dff] tracking-[0.1em]">AI PREDICTION — {prediction.trajectory.length}D</span>
+            <span className="text-[9px] text-[#505050]">|</span>
+            <span className="text-[9px] text-[#505050]">Confidence: {(prediction.confidence * 100).toFixed(0)}%</span>
+            {predChange !== null && (
+              <>
+                <span className="text-[9px] text-[#505050]">|</span>
+                <span className={`text-[9px] ${predChange >= 0 ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
+                  Target: ${lastPred!.price.toFixed(2)} ({predChange >= 0 ? "+" : ""}{predChange.toFixed(1)}%)
+                </span>
+              </>
+            )}
+          </div>
+          <p className="text-[9px] text-[#707070] leading-relaxed line-clamp-2">
+            {prediction.aiSummary}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

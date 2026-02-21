@@ -318,6 +318,40 @@ export async function analyzeOsint(params: {
   });
 }
 
+// ── Predictions ─────────────────────────────────────────────────────────────
+export interface ApiPredictionPoint {
+  date: string;
+  price: number;
+  upper: number;
+  lower: number;
+}
+
+export interface ApiShockFactor {
+  eventTitle: string;
+  type: string;
+  severity: number;
+  impactScore: number;
+  direction: 'up' | 'down';
+}
+
+export interface ApiPredictionResult {
+  ticker: string;
+  companyName: string;
+  currentPrice: number;
+  trajectory: ApiPredictionPoint[];
+  shockFactors: ApiShockFactor[];
+  aiSummary: string;
+  confidence: number;
+  generatedAt: string;
+}
+
+export async function getStockPrediction(
+  ticker: string,
+  days = 30,
+): Promise<ApiPredictionResult> {
+  return fetchJson(`/stocks/${ticker}/predict?days=${days}`);
+}
+
 // ── Health ────────────────────────────────────────────────────────────────────
 export async function getHealth(): Promise<{ status: string; uptime: number; timestamp: string }> {
   return fetchJson('/health');
