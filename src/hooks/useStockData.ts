@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchQuotes, Quote } from '../services/finnhub';
-import { WATCHLIST, FINNHUB_KEY } from '../config';
+import { WATCHLIST, DISPLAY_SYMBOLS, FINNHUB_KEY } from '../config';
+
+const ALL_SYMBOLS = [...WATCHLIST, ...DISPLAY_SYMBOLS] as const;
 
 export interface StockState {
   quotes: Record<string, Quote>;
@@ -25,7 +27,7 @@ export function useStockData(): StockState {
   const refresh = useCallback(async () => {
     if (!hasKey) return;
     try {
-      const quotes = await fetchQuotes(WATCHLIST);
+      const quotes = await fetchQuotes(ALL_SYMBOLS);
       setState(s => ({ ...s, quotes, loading: false, error: null, lastUpdated: new Date() }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Fetch failed';

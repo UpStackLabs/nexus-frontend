@@ -5,7 +5,8 @@
       "mcp__figma-remote-mcp__get_metadata",
       "mcp__figma-remote-mcp__get_design_context",
       "Bash(tail:*)",
-      "Bash(cd \"C:\\\\Users\\\\Namis\\\\OneDrive\\\\Documents\\\\hackalytics-frontend\" && npx vite build 2>&1)"
+      "Bash(cd \"C:\\\\Users\\\\Namis\\\\OneDrive\\\\Documents\\\\hackalytics-frontend\" && npx vite build 2>&1)",
+      "Bash(head:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

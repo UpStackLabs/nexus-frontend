@@ -14,6 +14,9 @@ export const API = {
 export const WATCHLIST = ['LMT', 'RTX', 'NOC', 'XOM', 'CVX', 'VXX', 'GLD', 'USO', 'BNO'] as const;
 export type WatchlistSymbol = (typeof WATCHLIST)[number];
 
+// Display stocks shown in StockPanel / StockChart
+export const DISPLAY_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'TSLA', 'AMZN', 'META', 'PLTR'] as const;
+
 // FX currencies to track relative to USD
 export const FX_CURRENCIES = ['BRL', 'EUR', 'GBP', 'SAR'] as const;
 
