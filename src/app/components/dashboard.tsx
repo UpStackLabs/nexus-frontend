@@ -9,6 +9,7 @@ import { EventSelector } from './event-selector';
 import { SimulationForm } from './simulation-form';
 import { SectorDrilldown } from './sector-drilldown';
 import { LiveTicker } from './live-ticker';
+import { OsintUpload } from './osint-upload';
 import { useSocket } from '../../hooks/useSocket';
 import { useEvents } from '../../hooks/useBackendData';
 import { SHOCK_META } from '../../config';
@@ -136,6 +137,7 @@ export function Dashboard() {
               onSelect={setSelectedEventId}
             />
             <SimulationForm onResult={handleSimResult} />
+            <OsintUpload />
           </div>
 
           {/* Globe — takes ~58% of the center column height */}

@@ -62,30 +62,18 @@ export function Header() {
       }}
     >
       {/* Wordmark */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', flexShrink: 0 }}>
         <span
           style={{
             ...COND,
-            fontSize: '15px',
-            fontWeight: 700,
-            color: 'var(--text)',
-            letterSpacing: '0.06em',
-            lineHeight: 1,
-          }}
-        >
-          SHOCK
-        </span>
-        <span
-          style={{
-            ...COND,
-            fontSize: '15px',
+            fontSize: '16px',
             fontWeight: 700,
             color: 'var(--red)',
-            letterSpacing: '0.06em',
+            letterSpacing: '0.12em',
             lineHeight: 1,
           }}
         >
-          GLOBE
+          NEXUS
         </span>
         <span
           style={{
@@ -93,11 +81,11 @@ export function Header() {
             fontSize: '7px',
             color: 'var(--text-3)',
             letterSpacing: '0.14em',
-            marginLeft: '4px',
+            marginLeft: '6px',
             alignSelf: 'center',
           }}
         >
-          v2.6
+          SHOCKGLOBE v3.0
         </span>
       </div>
 
@@ -159,9 +147,9 @@ export function Header() {
           height: '100%',
         }}
       >
+        <ApiDot label="NEXUS-API" active />
         <ApiDot label="OPEN-METEO" active />
         <ApiDot label="GDELT" active />
-        <ApiDot label="ER-API" active />
         <ApiDot label="FINNHUB" active={hasFinnhub} />
       </div>
 
