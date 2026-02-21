@@ -59,7 +59,7 @@ export function StockChart() {
   const { selectedSymbol, setSelectedSymbol } = useApp();
   const [selectedTimeframe, setSelectedTimeframe] = useState("1M");
   const [showPrediction, setShowPrediction] = useState(true);
-  const { quotes, hasKey } = useStockData();
+  const { quotes } = useStockData();
   const { stocks: backendStocks, loading: stocksLoading } = useStocks();
 
   const stockList = backendStocks.map(s => ({
@@ -159,7 +159,7 @@ export function StockChart() {
             <span className={`text-[10px] ${positive ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
               {positive ? "+" : ""}{(liveChange ?? 0).toFixed(2)} ({positive ? "+" : ""}{(liveChangePct ?? 0).toFixed(2)}%)
             </span>
-            {hasKey && <span className="text-[8px] text-[#404040]">FINNHUB</span>}
+            <span className="text-[8px] text-[#404040]">LIVE</span>
           </div>
 
           {/* Prediction toggle */}

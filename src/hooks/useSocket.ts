@@ -26,6 +26,7 @@ export function useSocket() {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 2000,
+      reconnectionAttempts: 10,
     });
 
     socketRef.current = socket;
