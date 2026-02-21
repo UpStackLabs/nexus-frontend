@@ -20,6 +20,7 @@ jobs:
 
       - run: npm run build
         env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_FINNHUB_KEY: ${{ secrets.VITE_FINNHUB_KEY }}
           VITE_MAPBOX_TOKEN: ${{ secrets.VITE_MAPBOX_TOKEN }}
 
