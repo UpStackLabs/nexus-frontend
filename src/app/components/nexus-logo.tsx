@@ -15,19 +15,10 @@ export function NexusLogo({ size = 28 }: { size?: number }) {
         </linearGradient>
       </defs>
 
-      {/* Stylized "N" formed by a stock trend line */}
-      <polyline
-        points="14,50 14,14 50,50 50,14"
-        fill="none"
-        stroke={`url(#${id})`}
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* Small dot accents at the data points */}
-      <circle cx="14" cy="50" r="3" fill="#c41e3a" />
-      <circle cx="50" cy="14" r="3" fill="#9c27b0" />
+      {/* Three ascending chart bars */}
+      <rect x="8" y="38" width="12" height="20" rx="2" fill={`url(#${id})`} opacity="0.6" />
+      <rect x="26" y="24" width="12" height="34" rx="2" fill={`url(#${id})`} opacity="0.8" />
+      <rect x="44" y="8" width="12" height="50" rx="2" fill={`url(#${id})`} />
     </svg>
   );
 }
