@@ -117,26 +117,12 @@ export function Dashboard() {
 
       {/* Bottom Status Bar */}
       <div className="h-5 bg-[#080808] border-t border-[#141414] flex items-center justify-between px-4 shrink-0">
-        <div className="flex items-center gap-4">
-          <span className="text-[8px] text-[#353535] tracking-[0.1em]">
-            NEXUS INTELLIGENCE PLATFORM v4.2.1
+        <span className="text-[8px] text-[#353535] tracking-[0.08em]">LATENCY: 12ms</span>
+        <div className="flex items-center gap-1">
+          <div className={`w-1 h-1 rounded-full ${connected ? "bg-[#00c853]" : "bg-[#c41e3a]"}`} />
+          <span className={`text-[8px] tracking-[0.08em] ${connected ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
+            {connected ? "CONNECTED" : "DISCONNECTED"}
           </span>
-          <span className="text-[8px] text-[#252525]">|</span>
-          <span className="text-[8px] text-[#353535] tracking-[0.08em]">
-            CLASSIFICATION: CONFIDENTIAL
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-[8px] text-[#353535] tracking-[0.08em]">LATENCY: 12ms</span>
-          <span className="text-[8px] text-[#252525]">|</span>
-          <span className="text-[8px] text-[#353535] tracking-[0.08em]">SECURE CHANNEL: ACTIVE</span>
-          <span className="text-[8px] text-[#252525]">|</span>
-          <div className="flex items-center gap-1">
-            <div className={`w-1 h-1 rounded-full ${connected ? "bg-[#00c853]" : "bg-[#c41e3a]"}`} />
-            <span className={`text-[8px] tracking-[0.08em] ${connected ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
-              {connected ? "CONNECTED" : "DISCONNECTED"}
-            </span>
-          </div>
         </div>
       </div>
 
