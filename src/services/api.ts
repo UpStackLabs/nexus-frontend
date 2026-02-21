@@ -41,14 +41,6 @@ export async function getEvents(params?: {
   return fetchJson(`/events${qs ? `?${qs}` : ''}`);
 }
 
-export async function getEvent(id: string): Promise<ApiEvent> {
-  return fetchJson(`/events/${id}`);
-}
-
-export async function getEventShocks(id: string): Promise<ApiShockScore[]> {
-  return fetchJson(`/events/${id}/shocks`);
-}
-
 // ── Stocks ───────────────────────────────────────────────────────────────────
 export interface ApiStock {
   ticker: string;
@@ -64,39 +56,6 @@ export interface ApiStock {
   location: { lat: number; lng: number };
 }
 
-export interface ApiShockScore {
-  eventId: string;
-  ticker: string;
-  companyName: string;
-  score: number;
-  similarityScore: number;
-  historicalSensitivity: number;
-  geographicProximity: number;
-  supplyChainLinkage: number;
-  predictedChange: number;
-  actualChange: number | null;
-  surpriseFactor: number | null;
-  confidence: number;
-  direction: 'up' | 'down';
-}
-
-export interface ApiStockAnalysis {
-  ticker: string;
-  companyName: string;
-  sector: string;
-  country: string;
-  currentPrice: number;
-  priceChange24h: number;
-  priceChangePercent24h: number;
-  relevantEvents: { eventId: string; title: string; type: string; severity: number; shockScore: number }[];
-  shockAnalysis: {
-    overallRiskLevel: string;
-    compositeShockScore: number;
-    topContributors: { factor: string; value: number }[];
-  };
-  analyzedAt: string;
-}
-
 export async function getStocks(params?: {
   sector?: string;
   country?: string;
@@ -106,10 +65,6 @@ export async function getStocks(params?: {
   if (params?.country) query.set('country', params.country);
   const qs = query.toString();
   return fetchJson(`/stocks${qs ? `?${qs}` : ''}`);
-}
-
-export async function getStockAnalysis(ticker: string): Promise<ApiStockAnalysis> {
-  return fetchJson(`/stocks/${ticker}/analysis`);
 }
 
 export interface StockHistoryPoint {
@@ -160,18 +115,6 @@ export async function getGlobeArcs(eventId?: string): Promise<ApiConnectionArc[]
   return fetchJson(`/globe/arcs${eventId ? `?eventId=${eventId}` : ''}`);
 }
 
-export async function getGlobeMarkers(): Promise<{
-  id: string;
-  title: string;
-  lat: number;
-  lng: number;
-  type: string;
-  severity: number;
-  rippleRadius: number;
-}[]> {
-  return fetchJson('/globe/markers');
-}
-
 // ── Sectors ──────────────────────────────────────────────────────────────────
 export interface ApiSector {
   sector: string;
@@ -189,7 +132,6 @@ export async function getSectors(): Promise<ApiSector[]> {
 export interface ApiSimulationResult {
   simulatedEventId: string;
   title: string;
-  shocks: ApiShockScore[];
   heatmap: ApiHeatmapEntry[];
   arcs: ApiConnectionArc[];
   interlinkednessScore: number;
@@ -208,20 +150,6 @@ export async function simulateEvent(params: {
     method: 'POST',
     body: JSON.stringify(params),
   });
-}
-
-// ── Historical ───────────────────────────────────────────────────────────────
-export async function getHistoricalSimilar(params?: {
-  eventId?: string;
-  description?: string;
-  limit?: number;
-}): Promise<ApiEvent[]> {
-  const query = new URLSearchParams();
-  if (params?.eventId) query.set('eventId', params.eventId);
-  if (params?.description) query.set('description', params.description);
-  if (params?.limit) query.set('limit', String(params.limit));
-  const qs = query.toString();
-  return fetchJson(`/historical/similar${qs ? `?${qs}` : ''}`);
 }
 
 // ── Chat ─────────────────────────────────────────────────────────────────────
@@ -352,7 +280,3 @@ export async function getStockPrediction(
   return fetchJson(`/stocks/${ticker}/predict?days=${days}`);
 }
 
-// ── Health ────────────────────────────────────────────────────────────────────
-export async function getHealth(): Promise<{ status: string; uptime: number; timestamp: string }> {
-  return fetchJson('/health');
-}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import * as api from '../services/api';
 
 // ── Events ──────────────────────────────────────────────────────────────────
@@ -48,48 +48,4 @@ export function useStocks() {
   }, []);
 
   return { stocks, loading };
-}
-
-// ── Globe Data ───────────────────────────────────────────────────────────────
-export function useGlobeData(eventId?: string) {
-  const [heatmap, setHeatmap] = useState<api.ApiHeatmapEntry[]>([]);
-  const [arcs, setArcs] = useState<api.ApiConnectionArc[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      api.getGlobeHeatmap(eventId),
-      api.getGlobeArcs(eventId),
-    ]).then(([h, a]) => {
-      setHeatmap(h);
-      setArcs(a);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [eventId]);
-
-  return { heatmap, arcs, loading };
-}
-
-// ── Simulation ───────────────────────────────────────────────────────────────
-export function useSimulation() {
-  const [result, setResult] = useState<api.ApiSimulationResult | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const simulate = useCallback(async (params: {
-    title: string;
-    type: string;
-    severity: number;
-    location: { lat: number; lng: number; country: string; region?: string };
-  }) => {
-    setLoading(true);
-    try {
-      const res = await api.simulateEvent(params);
-      setResult(res);
-      return res;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  return { result, loading, simulate };
 }
