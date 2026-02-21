@@ -298,3 +298,19 @@ export async function getQuotes(
   return fetchJson(`/stocks/quotes?symbols=${symbols.join(',')}`);
 }
 
+// ── News ─────────────────────────────────────────────────────────────────────
+export interface NewsDisplayItem {
+  title: string;
+  source: string;
+  publishedAt: string;
+}
+
+export async function getNews(): Promise<NewsDisplayItem[]> {
+  return fetchJson('/ingest/news');
+}
+
+// ── Health ────────────────────────────────────────────────────────────────────
+export async function getHealth(): Promise<{ status: string; uptime: number; timestamp: string }> {
+  return fetchJson('/health');
+}
+

@@ -105,10 +105,9 @@ export function OsintFeed() {
     backendEventId: e.id,
   }));
 
-  // Merge real GDELT news for a richer feed
+  // Merge raw news feed items (not yet classified) for a richer display
   const liveEvents: OsintEvent[] = news
     .filter((n) => n.type === "geopolitical")
-    .slice(0, 4)
     .map(gdeltToEvent);
 
   const allEvents: OsintEvent[] = [...backendMapped, ...liveEvents];
@@ -116,7 +115,7 @@ export function OsintFeed() {
   const filteredEvents =
     filter === "ALL" ? allEvents : allEvents.filter((e) => e.type === filter);
 
-  const visibleEvents = showAll ? filteredEvents : filteredEvents.slice(0, 8);
+  const visibleEvents = showAll ? filteredEvents : filteredEvents.slice(0, 15);
 
   return (
     <div className="h-full flex flex-col">
