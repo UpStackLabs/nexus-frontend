@@ -91,7 +91,12 @@ export function StockChart() {
   ];
 
   // Add "today" marker and prediction data
-  const todayDate = new Date().toISOString().slice(5, 10).replace("-", "/");
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso);
+    return `${months[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const todayDate = fmtDate(new Date().toISOString());
 
   if (showPrediction && prediction?.trajectory) {
     // Add today divider
@@ -107,7 +112,7 @@ export function StockChart() {
     // Add prediction points
     for (const pt of prediction.trajectory) {
       mergedData.push({
-        date: pt.date.slice(5).replace("-", "/"),
+        date: fmtDate(pt.date),
         predicted: pt.price,
         upper: pt.upper,
         lower: pt.lower,
