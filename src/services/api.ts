@@ -115,6 +115,15 @@ export async function getGlobeArcs(eventId?: string): Promise<ApiConnectionArc[]
   return fetchJson(`/globe/arcs${eventId ? `?eventId=${eventId}` : ''}`);
 }
 
+/** Vector-DB proximity: countries historically similar to a given event embedding. */
+export async function getGlobeVectorProximity(eventId: string): Promise<ApiHeatmapEntry[]> {
+  return fetchJson(`/globe/vector-proximity?eventId=${eventId}`);
+}
+
+export async function getEvent(id: string): Promise<ApiEvent> {
+  return fetchJson(`/events/${id}`);
+}
+
 // ── Sectors ──────────────────────────────────────────────────────────────────
 export interface ApiSector {
   sector: string;
