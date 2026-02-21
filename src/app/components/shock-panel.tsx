@@ -32,7 +32,7 @@ export function ShockPanel() {
   const { data: weather, loading: wLoading } = useWeatherData();
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
+    <div style={{ backgroundColor: 'var(--bg)' }}>
       {/* Panel header */}
       <div
         className="flex items-center justify-between px-3"
@@ -45,7 +45,7 @@ export function ShockPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {/* Shock Score display */}
         <div className="px-3 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
           <div style={{ ...MONO, fontSize: '8px', color: 'var(--text-3)', letterSpacing: '0.14em', marginBottom: '6px' }}>
@@ -189,7 +189,7 @@ export function ShockPanel() {
       {/* Footer */}
       <div
         className="px-3 flex items-center justify-between"
-        style={{ height: '20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}
+        style={{ height: '20px', borderTop: '1px solid var(--border)' }}
       >
         <span style={{ ...MONO, fontSize: '7px', color: 'var(--text-3)' }}>OPEN-METEO / LIVE</span>
         <span style={{ ...MONO, fontSize: '7px', color: 'var(--text-3)' }}>5min REFRESH</span>

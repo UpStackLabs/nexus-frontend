@@ -1,13 +1,22 @@
+import { useState, useCallback } from 'react';
 import { Header } from './header';
 import { GlobeView } from './globe-view';
 import { AssetTable } from './asset-table';
 import { NewsFeed } from './news-feed';
 import { ShockPanel } from './shock-panel';
+import { ChatPanel } from './chat-panel';
+import { EventSelector } from './event-selector';
+import { SimulationForm } from './simulation-form';
+import { SectorDrilldown } from './sector-drilldown';
+import { LiveTicker } from './live-ticker';
+import { useSocket } from '../../hooks/useSocket';
+import { useEvents } from '../../hooks/useBackendData';
 import { SHOCK_META } from '../../config';
+import type { ApiSimulationResult } from '../../services/api';
 
 const MONO: React.CSSProperties = { fontFamily: "'IBM Plex Mono', monospace" };
 
-function StatusBar() {
+function StatusBar({ socketConnected }: { socketConnected: boolean }) {
   return (
     <div
       style={{
@@ -24,7 +33,7 @@ function StatusBar() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <span style={{ ...MONO, fontSize: '7px', color: 'var(--text-3)', letterSpacing: '0.1em' }}>
-          SHOCKGLOBE INTELLIGENCE PLATFORM
+          NEXUS INTELLIGENCE PLATFORM
         </span>
         <span style={{ ...MONO, fontSize: '7px', color: 'var(--text-3)' }}>
           EVENT: {SHOCK_META.id}
@@ -37,6 +46,20 @@ function StatusBar() {
         <span style={{ ...MONO, fontSize: '7px', color: 'var(--text-3)', letterSpacing: '0.08em' }}>
           DATA: OPEN-METEO / GDELT / ER-API / FINNHUB
         </span>
+        <div className="flex items-center gap-1">
+          <div
+            className={socketConnected ? 'animate-pulse' : ''}
+            style={{
+              width: '4px',
+              height: '4px',
+              borderRadius: '50%',
+              backgroundColor: socketConnected ? 'var(--green)' : 'var(--red-dim)',
+            }}
+          />
+          <span style={{ ...MONO, fontSize: '7px', color: socketConnected ? 'var(--green)' : 'var(--text-3)', letterSpacing: '0.06em' }}>
+            {socketConnected ? 'WS CONNECTED' : 'WS OFFLINE'}
+          </span>
+        </div>
         <span style={{ ...MONO, fontSize: '7px', color: 'var(--green)', letterSpacing: '0.06em' }}>
           SYSTEM NOMINAL
         </span>
@@ -46,6 +69,21 @@ function StatusBar() {
 }
 
 export function Dashboard() {
+  const { connected, priceList } = useSocket();
+  const { events } = useEvents();
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [, setSimResult] = useState<ApiSimulationResult | null>(null);
+
+  const handleSimResult = useCallback((result: ApiSimulationResult) => {
+    setSimResult(result);
+  }, []);
+
+  const tickerPrices = priceList().map(p => ({
+    ticker: p.ticker,
+    price: p.price,
+    changePercent: p.changePercent,
+  }));
+
   return (
     <div
       style={{
@@ -59,6 +97,9 @@ export function Dashboard() {
     >
       {/* Top bar: 40px */}
       <Header />
+
+      {/* Live price ticker */}
+      <LiveTicker prices={tickerPrices} />
 
       {/* Main content row */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
@@ -78,7 +119,25 @@ export function Dashboard() {
         </div>
 
         {/* Center column: Globe (top) + News feed (bottom) */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, position: 'relative' }}>
+          {/* Globe controls overlay */}
+          <div
+            className="flex items-center gap-2"
+            style={{
+              position: 'absolute',
+              top: '6px',
+              left: '8px',
+              zIndex: 30,
+            }}
+          >
+            <EventSelector
+              events={events}
+              selectedEventId={selectedEventId}
+              onSelect={setSelectedEventId}
+            />
+            <SimulationForm onResult={handleSimResult} />
+          </div>
+
           {/* Globe — takes ~58% of the center column height */}
           <div style={{ flex: '0 0 58%', position: 'relative', overflow: 'hidden', borderBottom: '1px solid var(--border)' }}>
             <GlobeView />
@@ -90,7 +149,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Right panel: Shock analysis — 260px */}
+        {/* Right panel: Shock analysis + Sector Drilldown — 260px */}
         <div
           style={{
             width: '260px',
@@ -101,12 +160,18 @@ export function Dashboard() {
             overflow: 'hidden',
           }}
         >
-          <ShockPanel />
+          <div className="flex-1 overflow-y-auto">
+            <ShockPanel />
+            <SectorDrilldown />
+          </div>
         </div>
       </div>
 
       {/* Bottom status bar: 20px */}
-      <StatusBar />
+      <StatusBar socketConnected={connected} />
+
+      {/* Chat panel (floating) */}
+      <ChatPanel />
     </div>
   );
 }
