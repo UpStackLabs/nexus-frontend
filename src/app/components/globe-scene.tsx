@@ -1,7 +1,8 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { globeMarkers } from "./mock-data";
+import { globeMarkers as mockMarkers } from "./mock-data";
+import * as api from "../../services/api";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
 
@@ -11,6 +12,14 @@ const severityColors: Record<string, string> = {
   MEDIUM: "#2196f3",
   LOW: "#00c853",
 };
+
+// Map shock intensity (0-1) to a severity label for coloring
+function intensityToSeverity(intensity: number): string {
+  if (intensity >= 0.8) return "CRITICAL";
+  if (intensity >= 0.6) return "HIGH";
+  if (intensity >= 0.3) return "MEDIUM";
+  return "LOW";
+}
 
 function buildArcCoords(
   start: [number, number],
@@ -27,55 +36,62 @@ function buildArcCoords(
   return coords;
 }
 
-export function GlobeScene() {
+interface GlobeMarker {
+  lat: number;
+  lng: number;
+  label: string;
+  severity: string;
+  type: string;
+}
+
+interface GlobeSceneProps {
+  selectedEventId?: string | null;
+}
+
+export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const [markerCount, setMarkerCount] = useState(mockMarkers.length);
 
+  // Fetch heatmap data and render markers
   useEffect(() => {
-    if (!containerRef.current || !MAPBOX_TOKEN) return;
+    const map = mapRef.current;
+    if (!map || !map.loaded()) return;
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [20, 20],
-      zoom: 1.8,
-      projection: "globe",
-      attributionControl: false,
-    });
+    async function loadMarkers() {
+      let markers: GlobeMarker[] = mockMarkers;
 
-    // Atmospheric glow for the 3D globe
-    map.on("style.load", () => {
-      map.setFog({
-        color: "rgb(10, 10, 10)",
-        "high-color": "rgb(20, 10, 15)",
-        "horizon-blend": 0.08,
-        "space-color": "rgb(5, 5, 5)",
-        "star-intensity": 0.4,
-      });
-    });
+      try {
+        const heatmap = await api.getGlobeHeatmap(selectedEventId ?? undefined);
+        if (heatmap.length > 0) {
+          markers = heatmap.map((h) => ({
+            lat: h.lat,
+            lng: h.lng,
+            label: `${h.country} — ${h.affectedSectors.join(", ")}`,
+            severity: intensityToSeverity(h.shockIntensity),
+            type: h.direction.toUpperCase(),
+          }));
+        }
+      } catch {
+        // Backend unavailable — use mock markers
+      }
 
-    mapRef.current = map;
+      setMarkerCount(markers.length);
 
-    map.addControl(
-      new mapboxgl.NavigationControl({ showCompass: false }),
-      "top-right"
-    );
-
-    map.on("load", () => {
-      // --- Pulsing marker dots via canvas icons ---
-      globeMarkers.forEach((marker) => {
+      markers.forEach((marker) => {
         const color = severityColors[marker.severity] || "#2196f3";
 
-        // Outer glow element
         const el = document.createElement("div");
         el.className = "mapbox-marker";
         el.style.width = "28px";
         el.style.height = "28px";
         el.style.position = "relative";
 
-        // Pulse ring
         const pulse = document.createElement("div");
         pulse.style.cssText = `
           position:absolute;inset:0;border-radius:50%;
@@ -84,7 +100,6 @@ export function GlobeScene() {
         `;
         el.appendChild(pulse);
 
-        // Core dot
         const dot = document.createElement("div");
         dot.style.cssText = `
           position:absolute;top:50%;left:50%;
@@ -106,95 +121,133 @@ export function GlobeScene() {
           </div>`
         );
 
-        new mapboxgl.Marker({ element: el })
+        const m = new mapboxgl.Marker({ element: el })
           .setLngLat([marker.lng, marker.lat])
           .setPopup(popup)
-          .addTo(map);
-      });
+          .addTo(map!);
 
-      // --- Fetch backend arcs and render shock propagation lines ---
-      fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:3000/api"}/globe/arcs`)
-        .then((r) => r.json())
-        .then((backendArcs: { startLat: number; startLng: number; endLat: number; endLng: number; shockIntensity: number; color?: string; fromLabel?: string; toLabel?: string }[]) => {
-          const arcFeatures = backendArcs.map((arc, i) => ({
+        markersRef.current.push(m);
+      });
+    }
+
+    loadMarkers();
+  }, [selectedEventId]);
+
+  // Fetch arcs and render
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.loaded()) return;
+
+    async function loadArcs() {
+      let arcFeatures: {
+        type: "Feature";
+        properties: { intensity: number; color: string; from: string; to: string };
+        geometry: { type: "LineString"; coordinates: [number, number][] };
+      }[] = [];
+
+      try {
+        const backendArcs = await api.getGlobeArcs(selectedEventId ?? undefined);
+        arcFeatures = backendArcs.map((arc) => ({
+          type: "Feature" as const,
+          properties: {
+            intensity: arc.shockIntensity,
+            color: arc.color || "#c41e3a",
+            from: arc.fromLabel || "",
+            to: arc.toLabel || "",
+          },
+          geometry: {
+            type: "LineString" as const,
+            coordinates: buildArcCoords(
+              [arc.startLng, arc.startLat],
+              [arc.endLng, arc.endLat]
+            ),
+          },
+        }));
+      } catch {
+        // Fallback: connect mock markers sequentially
+        for (let i = 0; i < mockMarkers.length - 1; i++) {
+          const m1 = mockMarkers[i];
+          const m2 = mockMarkers[i + 1];
+          arcFeatures.push({
             type: "Feature" as const,
-            properties: {
-              intensity: arc.shockIntensity,
-              color: arc.color || "#c41e3a",
-              from: arc.fromLabel || "",
-              to: arc.toLabel || "",
-            },
+            properties: { color: "#c41e3a", intensity: 0.5, from: "", to: "" },
             geometry: {
               type: "LineString" as const,
-              coordinates: buildArcCoords(
-                [arc.startLng, arc.startLat],
-                [arc.endLng, arc.endLat]
-              ),
+              coordinates: buildArcCoords([m1.lng, m1.lat], [m2.lng, m2.lat]),
             },
-          }));
-
-          if (!map.getSource("arcs")) {
-            map.addSource("arcs", {
-              type: "geojson",
-              data: { type: "FeatureCollection", features: arcFeatures },
-            });
-
-            // Glow layer (wider, more transparent)
-            map.addLayer({
-              id: "arcs-glow",
-              type: "line",
-              source: "arcs",
-              paint: {
-                "line-color": ["get", "color"],
-                "line-opacity": 0.12,
-                "line-width": 4,
-                "line-blur": 3,
-              },
-            });
-
-            // Core line
-            map.addLayer({
-              id: "arcs-line",
-              type: "line",
-              source: "arcs",
-              paint: {
-                "line-color": ["get", "color"],
-                "line-opacity": ["*", ["get", "intensity"], 0.5],
-                "line-width": ["interpolate", ["linear"], ["get", "intensity"], 0, 0.5, 1, 2],
-                "line-dasharray": [3, 3],
-              },
-            });
-          }
-        })
-        .catch(() => {
-          // Fallback: connect markers sequentially
-          const arcFeatures = [];
-          for (let i = 0; i < globeMarkers.length - 1; i++) {
-            const m1 = globeMarkers[i];
-            const m2 = globeMarkers[i + 1];
-            arcFeatures.push({
-              type: "Feature" as const,
-              properties: { color: "#c41e3a", intensity: 0.5 },
-              geometry: {
-                type: "LineString" as const,
-                coordinates: buildArcCoords([m1.lng, m1.lat], [m2.lng, m2.lat]),
-              },
-            });
-          }
-          map.addSource("arcs", {
-            type: "geojson",
-            data: { type: "FeatureCollection", features: arcFeatures },
           });
-          map.addLayer({
-            id: "arcs-line",
-            type: "line",
-            source: "arcs",
-            paint: { "line-color": "#c41e3a", "line-opacity": 0.25, "line-width": 1, "line-dasharray": [4, 4] },
-          });
+        }
+      }
+
+      const data = { type: "FeatureCollection" as const, features: arcFeatures };
+
+      if (map!.getSource("arcs")) {
+        (map!.getSource("arcs") as mapboxgl.GeoJSONSource).setData(data);
+      } else {
+        map!.addSource("arcs", { type: "geojson", data });
+
+        map!.addLayer({
+          id: "arcs-glow",
+          type: "line",
+          source: "arcs",
+          paint: {
+            "line-color": ["get", "color"],
+            "line-opacity": 0.12,
+            "line-width": 4,
+            "line-blur": 3,
+          },
         });
+
+        map!.addLayer({
+          id: "arcs-line",
+          type: "line",
+          source: "arcs",
+          paint: {
+            "line-color": ["get", "color"],
+            "line-opacity": ["*", ["get", "intensity"], 0.5],
+            "line-width": ["interpolate", ["linear"], ["get", "intensity"], 0, 0.5, 1, 2],
+            "line-dasharray": [3, 3],
+          },
+        });
+      }
+    }
+
+    loadArcs();
+  }, [selectedEventId]);
+
+  // Initialize map (once)
+  useEffect(() => {
+    if (!containerRef.current || !MAPBOX_TOKEN) return;
+
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [20, 20],
+      zoom: 1.8,
+      projection: "globe",
+      attributionControl: false,
     });
 
-    // Slow auto-rotation for wow factor
+    map.on("style.load", () => {
+      map.setFog({
+        color: "rgb(10, 10, 10)",
+        "high-color": "rgb(20, 10, 15)",
+        "horizon-blend": 0.08,
+        "space-color": "rgb(5, 5, 5)",
+        "star-intensity": 0.4,
+      });
+    });
+
+    mapRef.current = map;
+
+    map.addControl(
+      new mapboxgl.NavigationControl({ showCompass: false }),
+      "top-right"
+    );
+
+    // Slow auto-rotation
     let rotating = true;
     let lastTime = performance.now();
 
@@ -204,7 +257,7 @@ export function GlobeScene() {
       const delta = (now - lastTime) / 1000;
       lastTime = now;
       const center = mapRef.current.getCenter();
-      center.lng -= delta * 3; // 3 degrees per second
+      center.lng -= delta * 3;
       mapRef.current.setCenter(center);
       requestAnimationFrame(spinGlobe);
     }
@@ -213,7 +266,6 @@ export function GlobeScene() {
       requestAnimationFrame(spinGlobe);
     });
 
-    // Pause rotation on interaction, resume after 4s idle
     let resumeTimer: ReturnType<typeof setTimeout>;
     const pause = () => {
       rotating = false;
@@ -256,7 +308,7 @@ export function GlobeScene() {
       <div className="absolute top-3 left-3 z-30 text-[10px] tracking-[0.1em] pointer-events-none">
         <div className="text-[#505050] mb-0.5">[SCOPE] GLOBAL THREAT MAP</div>
         <div className="text-[#c41e3a]">
-          {globeMarkers.length} ACTIVE EVENTS TRACKED
+          {markerCount} ACTIVE EVENTS TRACKED
         </div>
       </div>
 

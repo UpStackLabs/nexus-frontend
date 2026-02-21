@@ -1,9 +1,24 @@
 import { useState } from "react";
 import { Shield, Cloud, Cpu, Globe2, TrendingDown, ChevronRight, Radio } from "lucide-react";
 import { useNewsData } from "../../hooks/useNewsData";
-import { osintEvents } from "./mock-data";
+import { useEvents } from "../../hooks/useBackendData";
+import { useApp } from "../context";
+import { osintEvents as mockOsintEvents } from "./mock-data";
 
-type OsintEvent = typeof osintEvents[number];
+interface OsintEvent {
+  id: number | string;
+  type: string;
+  severity: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  lat: number;
+  lng: number;
+  impactedStocks: string[];
+  impact: number;
+  source: string;
+  backendEventId?: string; // original backend event ID for selecting
+}
 
 const typeIcons: Record<string, React.ReactNode> = {
   GEOPOLITICAL: <Globe2 className="w-3 h-3" />,
@@ -11,6 +26,8 @@ const typeIcons: Record<string, React.ReactNode> = {
   CYBER: <Shield className="w-3 h-3" />,
   SUPPLY_CHAIN: <Cpu className="w-3 h-3" />,
   ECONOMIC: <TrendingDown className="w-3 h-3" />,
+  MILITARY: <Globe2 className="w-3 h-3" />,
+  NATURAL_DISASTER: <Cloud className="w-3 h-3" />,
 };
 
 const severityColors: Record<string, string> = {
@@ -19,6 +36,27 @@ const severityColors: Record<string, string> = {
   MEDIUM: "#2196f3",
   LOW: "#00c853",
 };
+
+// Map backend event type strings to display categories
+function mapEventType(type: string): string {
+  const typeMap: Record<string, string> = {
+    military: "GEOPOLITICAL",
+    geopolitical: "GEOPOLITICAL",
+    economic: "ECONOMIC",
+    natural_disaster: "WEATHER",
+    cyber: "CYBER",
+    supply_chain: "SUPPLY_CHAIN",
+  };
+  return typeMap[type.toLowerCase()] ?? type.toUpperCase();
+}
+
+// Map backend severity number (1-10) to display label
+function mapSeverity(severity: number): string {
+  if (severity >= 8) return "CRITICAL";
+  if (severity >= 6) return "HIGH";
+  if (severity >= 4) return "MEDIUM";
+  return "LOW";
+}
 
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -46,10 +84,28 @@ function gdeltToEvent(article: { id: string; title: string; source: string; url:
 }
 
 export function OsintFeed() {
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | string | null>(null);
   const [filter, setFilter] = useState<string>("ALL");
   const [showAll, setShowAll] = useState(false);
   const { news } = useNewsData();
+  const { events: backendEvents } = useEvents();
+  const { setSelectedEventId } = useApp();
+
+  // Map backend events to display format
+  const backendMapped: OsintEvent[] = backendEvents.map((e) => ({
+    id: e.id,
+    type: mapEventType(e.type),
+    severity: mapSeverity(e.severity),
+    title: e.title,
+    description: e.description,
+    timestamp: e.timestamp,
+    lat: e.location.lat,
+    lng: e.location.lng,
+    impactedStocks: e.affectedTickers,
+    impact: 0, // no aggregate impact from backend, shocks provide per-stock detail
+    source: e.source.toUpperCase(),
+    backendEventId: e.id,
+  }));
 
   // Merge real GDELT news with mock events for a richer feed
   const liveEvents: OsintEvent[] = news
@@ -57,7 +113,10 @@ export function OsintFeed() {
     .slice(0, 4)
     .map(gdeltToEvent);
 
-  const allEvents: OsintEvent[] = [...liveEvents, ...osintEvents];
+  // Use backend events first, then GDELT, then mock as fallback
+  const allEvents: OsintEvent[] = backendMapped.length > 0
+    ? [...backendMapped, ...liveEvents]
+    : [...liveEvents, ...mockOsintEvents];
 
   const filteredEvents =
     filter === "ALL" ? allEvents : allEvents.filter((e) => e.type === filter);
@@ -100,7 +159,13 @@ export function OsintFeed() {
           <div
             key={event.id}
             className="px-3 py-2.5 border-b border-[#141414] cursor-pointer hover:bg-[#0e0e0e] transition-colors"
-            onClick={() => setExpandedId(expandedId === event.id ? null : event.id)}
+            onClick={() => {
+              setExpandedId(expandedId === event.id ? null : event.id);
+              // Set the selected event in app context so globe/shock panel react
+              if (event.backendEventId) {
+                setSelectedEventId(event.backendEventId);
+              }
+            }}
           >
             <div className="flex items-start gap-2">
               <div

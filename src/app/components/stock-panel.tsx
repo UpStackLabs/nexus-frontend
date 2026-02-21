@@ -1,10 +1,11 @@
 import { TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { useStockData } from "../../hooks/useStockData";
+import { useStocks } from "../../hooks/useBackendData";
 import { stocks as mockStocks, generateStockHistory } from "./mock-data";
 import { useApp } from "../context";
 
-// Pre-generate sparkline data (stable, does not re-randomize on render)
+// Pre-generate sparkline data for mock stocks (stable, does not re-randomize on render)
 const sparklineData: Record<string, { price: number }[]> = {};
 mockStocks.forEach((s) => {
   sparklineData[s.symbol] = generateStockHistory(s.price, 0.015).slice(-14);
@@ -13,6 +14,7 @@ mockStocks.forEach((s) => {
 function MiniChart({ symbol, positive }: { symbol: string; positive: boolean }) {
   const data = sparklineData[symbol] || [];
   const color = positive ? "#00c853" : "#c41e3a";
+  if (data.length === 0) return null;
   return (
     <ResponsiveContainer width="100%" height={28}>
       <AreaChart data={data}>
@@ -39,9 +41,26 @@ function MiniChart({ symbol, positive }: { symbol: string; positive: boolean }) 
 export function StockPanel() {
   const { selectedSymbol, setSelectedSymbol } = useApp();
   const { quotes, hasKey } = useStockData();
+  const { stocks: backendStocks, loading: backendLoading } = useStocks();
 
-  // Merge live quotes with mock stock list
-  const displayStocks = mockStocks.map((s) => {
+  // Build display list: prefer backend stocks, fall back to mock
+  const baseStocks = backendStocks.length > 0
+    ? backendStocks.map((s) => ({
+        symbol: s.ticker,
+        name: s.companyName,
+        price: s.price,
+        change: s.priceChange,
+        changePercent: s.priceChangePercent,
+        volume: s.volume > 1_000_000
+          ? `${(s.volume / 1_000_000).toFixed(1)}M`
+          : s.volume > 1_000
+            ? `${(s.volume / 1_000).toFixed(0)}K`
+            : String(s.volume),
+      }))
+    : mockStocks;
+
+  // Overlay Finnhub live quotes when available
+  const displayStocks = baseStocks.map((s) => {
     const live = quotes[s.symbol];
     if (live) {
       return {
@@ -54,6 +73,8 @@ export function StockPanel() {
     return s;
   });
 
+  const isLive = hasKey || backendStocks.length > 0;
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-3 py-2 border-b border-[#1e1e1e]">
@@ -61,7 +82,9 @@ export function StockPanel() {
           <BarChart3 className="w-3 h-3 text-[#c41e3a]" />
           <span className="text-[10px] text-[#707070] tracking-[0.12em]">MARKET WATCH</span>
         </div>
-        <span className="text-[9px] text-[#404040]">{hasKey ? "LIVE" : "DEMO"}</span>
+        <span className="text-[9px] text-[#404040]">
+          {backendLoading ? "LOADING" : isLive ? "LIVE" : "DEMO"}
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto">

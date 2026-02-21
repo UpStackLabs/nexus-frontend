@@ -9,6 +9,8 @@ import { SystemMetrics } from "./system-metrics";
 import { SectorDrilldown } from "./sector-drilldown";
 import { useStockData } from "../../hooks/useStockData";
 import { useFxData } from "../../hooks/useFxData";
+import { useSocket } from "../../hooks/useSocket";
+import { useApp } from "../context";
 
 function ScanLine() {
   return (
@@ -79,6 +81,9 @@ function TickerBar() {
 }
 
 export function Dashboard() {
+  const { connected } = useSocket();
+  const { selectedEventId } = useApp();
+
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0a0a0a] overflow-hidden relative">
       <ScanLine />
@@ -98,7 +103,7 @@ export function Dashboard() {
           <div className="flex-1 flex min-h-0">
             {/* Globe */}
             <div className="flex-1 relative border-r border-[#141414]">
-              <GlobeScene />
+              <GlobeScene selectedEventId={selectedEventId} />
               {/* Corner markers */}
               <div className="pointer-events-none absolute inset-0 z-20">
                 <div className="absolute top-3 left-3 w-4 h-4 border-t border-l border-[#2a2a2a]" />
@@ -156,8 +161,10 @@ export function Dashboard() {
           <span className="text-[8px] text-[#353535] tracking-[0.08em]">SECURE CHANNEL: ACTIVE</span>
           <span className="text-[8px] text-[#252525]">|</span>
           <div className="flex items-center gap-1">
-            <div className="w-1 h-1 bg-[#00c853] rounded-full" />
-            <span className="text-[8px] text-[#00c853] tracking-[0.08em]">CONNECTED</span>
+            <div className={`w-1 h-1 rounded-full ${connected ? "bg-[#00c853]" : "bg-[#c41e3a]"}`} />
+            <span className={`text-[8px] tracking-[0.08em] ${connected ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
+              {connected ? "CONNECTED" : "DISCONNECTED"}
+            </span>
           </div>
         </div>
       </div>
