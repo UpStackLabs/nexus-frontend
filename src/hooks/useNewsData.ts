@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchGdeltEvents, GdeltArticle, parseGdeltDate } from '../services/gdelt';
-import { GDELT_QUERY } from '../config';
+import { getNews, NewsDisplayItem } from '../services/api';
 
 export type NewsSource = 'geopolitical' | 'market';
 
@@ -13,13 +12,13 @@ export interface NewsEntry {
   type: NewsSource;
 }
 
-function fromGdelt(a: GdeltArticle): NewsEntry {
+function fromBackendNews(item: NewsDisplayItem, index: number): NewsEntry {
   return {
-    id: `gdelt-${a.url}`,
-    title: a.title,
-    source: a.domain,
-    url: a.url,
-    timestamp: parseGdeltDate(a.seendate),
+    id: `news-${index}-${item.publishedAt}`,
+    title: item.title,
+    source: item.source,
+    url: '',
+    timestamp: new Date(item.publishedAt).getTime(),
     type: 'geopolitical',
   };
 }
@@ -36,8 +35,10 @@ export function useNewsData() {
 
     async function refresh() {
       try {
-        const articles = await fetchGdeltEvents(GDELT_QUERY);
-        const entries = articles.map(fromGdelt).sort((a, b) => b.timestamp - a.timestamp).slice(0, 40);
+        const items = await getNews();
+        const entries = items
+          .map(fromBackendNews)
+          .sort((a, b) => b.timestamp - a.timestamp);
 
         if (!mounted) return;
         if (entries.length === 0) {

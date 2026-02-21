@@ -1,14 +1,16 @@
 {
   "permissions": {
     "allow": [
+      "Bash(git fetch:*)",
+      "Bash(git rebase:*)",
+      "Bash(git stash && git rebase origin/dev 2>&1)"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "aws-mcp",
     "github",
-    "google-drive",
-    "atlassian",
-    "figma-remote-mcp"
+    "figma-remote-mcp",
+    "playwright"
   ]
 }
