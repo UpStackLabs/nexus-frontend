@@ -1,4 +1,4 @@
-// ShockGlobe — Backend API Service Layer
+// Nexus — Backend API Service Layer
 // All calls to the NestJS backend at /api/*
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';

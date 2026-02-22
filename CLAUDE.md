@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-ShockGlobe frontend — a real-time financial intelligence dashboard with an interactive 3D globe showing how geopolitical events propagate as market shockwaves. Part of a monorepo; see the parent `../CLAUDE.md` for full project context.
+Nexus frontend — a real-time financial intelligence dashboard with an interactive 3D globe showing how geopolitical events propagate as market shockwaves. Part of a monorepo; see the parent `../CLAUDE.md` for full project context.
 
 ## Commands
 

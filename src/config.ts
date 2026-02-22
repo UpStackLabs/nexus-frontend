@@ -1,4 +1,4 @@
-// ShockGlobe — Application Configuration
+// Nexus — Application Configuration
 // Live API endpoints + application constants (no hardcoded data values)
 
 export const API = {
