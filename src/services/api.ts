@@ -61,10 +61,10 @@ export async function getStocks(params?: {
   country?: string;
 }): Promise<{ data: ApiStock[]; total: number }> {
   const query = new URLSearchParams();
+  query.set('limit', '500');
   if (params?.sector) query.set('sector', params.sector);
   if (params?.country) query.set('country', params.country);
-  const qs = query.toString();
-  return fetchJson(`/stocks${qs ? `?${qs}` : ''}`);
+  return fetchJson(`/stocks?${query.toString()}`);
 }
 
 export interface StockHistoryPoint {
