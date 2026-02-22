@@ -17,22 +17,22 @@ function MiniSparkline({ symbol, positive }: { symbol: string; positive: boolean
   }, [symbol]);
 
   const color = positive ? "#00c853" : "#c41e3a";
-  if (data.length === 0) return <div className="w-12 h-5" />;
+  if (data.length === 0) return <div className="w-14 h-7" />;
 
   return (
-    <ResponsiveContainer width="100%" height={20}>
+    <ResponsiveContainer width="100%" height={28}>
       <AreaChart data={data}>
         <defs>
           <linearGradient id={`sbs-${symbol}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-            <stop offset="100%" stopColor={color} stopOpacity={0} />
+            <stop offset="0%" stopColor={color} stopOpacity={0.5} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.05} />
           </linearGradient>
         </defs>
         <Area
           type="monotone"
           dataKey="price"
           stroke={color}
-          strokeWidth={1}
+          strokeWidth={1.5}
           fill={`url(#sbs-${symbol})`}
           dot={false}
           isAnimationActive={false}
@@ -217,7 +217,7 @@ export function StocksBySector() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className="w-12">
+                            <div className="w-14">
                               <MiniSparkline symbol={stock.ticker} positive={positive} />
                             </div>
                             <div className="text-right">
