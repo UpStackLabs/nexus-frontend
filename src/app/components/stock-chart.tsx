@@ -8,9 +8,104 @@ import { useStocks } from "../../hooks/useBackendData";
 import { useChartData } from "../../hooks/useChartData";
 import { usePrediction } from "../../hooks/usePrediction";
 import { useApp } from "../context";
-import { Activity, ChevronDown, Loader, Brain, Zap } from "lucide-react";
+import { Activity, ChevronDown, Loader, Brain, Zap, TrendingUp, TrendingDown } from "lucide-react";
+import type { ApiShockFactor } from "../../services/api";
 
 const timeframes = ["1D", "1W", "1M", "3M", "1Y"];
+
+const TYPE_COLORS: Record<string, string> = {
+  geopolitical: "#ff6b35",
+  economic: "#ffb300",
+  military: "#c41e3a",
+  natural_disaster: "#00bfa5",
+  political: "#7c4dff",
+  financial: "#2196f3",
+};
+
+function ShockFactorChip({ factor }: { factor: ApiShockFactor }) {
+  const [hovered, setHovered] = useState(false);
+  const color = TYPE_COLORS[factor.type] ?? "#707070";
+  const isUp = factor.direction === "up";
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div
+        className="flex items-center gap-1 px-1.5 py-0.5 border cursor-default transition-colors"
+        style={{
+          borderColor: hovered ? color : `${color}33`,
+          backgroundColor: hovered ? `${color}15` : `${color}08`,
+        }}
+      >
+        <span className="w-1 h-1 rounded-full" style={{ backgroundColor: color }} />
+        <span className="text-[8px] text-[#909090] uppercase tracking-wider max-w-[80px] truncate">
+          {factor.type.replace(/_/g, " ")}
+        </span>
+        {isUp ? (
+          <TrendingUp className="w-2.5 h-2.5 text-[#00c853]" />
+        ) : (
+          <TrendingDown className="w-2.5 h-2.5 text-[#c41e3a]" />
+        )}
+      </div>
+
+      {/* Hover detail card */}
+      {hovered && (
+        <div className="absolute bottom-full left-0 mb-1.5 z-50 w-56 bg-[#111111] border border-[#2a2a2a] shadow-lg shadow-black/40">
+          <div className="px-2.5 py-2">
+            <p className="text-[10px] text-[#d4d4d4] leading-snug mb-1.5">
+              {factor.eventTitle}
+            </p>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span
+                className="text-[8px] uppercase tracking-wider px-1 py-px"
+                style={{ color, backgroundColor: `${color}15`, border: `1px solid ${color}33` }}
+              >
+                {factor.type.replace(/_/g, " ")}
+              </span>
+              <span className={`text-[8px] flex items-center gap-0.5 ${isUp ? "text-[#00c853]" : "text-[#c41e3a]"}`}>
+                {isUp ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                {isUp ? "BULLISH" : "BEARISH"}
+              </span>
+            </div>
+            {/* Severity bar */}
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[8px] text-[#505050] w-12">SEVERITY</span>
+              <div className="flex-1 h-1 bg-[#1a1a1a] overflow-hidden">
+                <div
+                  className="h-full transition-all"
+                  style={{
+                    width: `${(factor.severity / 10) * 100}%`,
+                    backgroundColor: color,
+                    opacity: 0.8,
+                  }}
+                />
+              </div>
+              <span className="text-[8px] text-[#707070] w-5 text-right">{factor.severity}/10</span>
+            </div>
+            {/* Impact score bar */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px] text-[#505050] w-12">IMPACT</span>
+              <div className="flex-1 h-1 bg-[#1a1a1a] overflow-hidden">
+                <div
+                  className="h-full transition-all"
+                  style={{
+                    width: `${Math.min(factor.impactScore * 100, 100)}%`,
+                    backgroundColor: "#7c4dff",
+                    opacity: 0.8,
+                  }}
+                />
+              </div>
+              <span className="text-[8px] text-[#707070] w-5 text-right">{factor.impactScore.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ChartPoint {
   date: string;
@@ -373,6 +468,15 @@ export function StockChart() {
           <p className="text-[9px] text-[#707070] leading-relaxed line-clamp-2">
             {prediction.aiSummary}
           </p>
+          {/* Shock Factors */}
+          {prediction.shockFactors.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="text-[8px] text-[#404040] tracking-wider mr-0.5">FACTORS</span>
+              {prediction.shockFactors.map((f, i) => (
+                <ShockFactorChip key={i} factor={f} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
