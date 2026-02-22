@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { ChevronRight, TrendingUp, TrendingDown, Layers, Loader } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { useStocks, useSectors } from "../../hooks/useBackendData";
@@ -62,12 +62,39 @@ function ShockBadge({ score }: { score: number }) {
 }
 
 export function StocksBySector() {
-  const { selectedSymbol, setSelectedSymbol } = useApp();
+  const { selectedSymbol, setSelectedSymbol, simulationResult } = useApp();
   const { stocks: backendStocks, loading: stocksLoading } = useStocks();
   const { sectors, loading: sectorsLoading } = useSectors();
   const { quotes } = useStockData();
   const { prices } = useSocket();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [flashTickers, setFlashTickers] = useState<Set<string>>(new Set());
+  const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Track price updates and trigger flash
+  const prevPricesRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    for (const [ticker, data] of Object.entries(prices)) {
+      const prev = prevPricesRef.current[ticker];
+      if (prev !== undefined && prev !== data.price) {
+        setFlashTickers((s) => new Set(s).add(ticker));
+        if (flashTimers.current[ticker]) clearTimeout(flashTimers.current[ticker]);
+        flashTimers.current[ticker] = setTimeout(() => {
+          setFlashTickers((s) => {
+            const next = new Set(s);
+            next.delete(ticker);
+            return next;
+          });
+        }, 2000);
+      }
+      prevPricesRef.current[ticker] = data.price;
+    }
+  }, [prices]);
+
+  const simAffectedSectors = useMemo(() => {
+    if (!simulationResult) return new Set<string>();
+    return new Set(simulationResult.topAffectedSectors.map((s) => s.sector));
+  }, [simulationResult]);
 
   // Group stocks by sector
   const grouped = useMemo(() => {
@@ -142,6 +169,11 @@ export function StocksBySector() {
                     />
                     <span className="text-[10px] text-[#a0a0a0] tracking-wide">{sector.toUpperCase()}</span>
                     <span className="text-[8px] text-[#404040]">({stocks.length})</span>
+                    {simulationResult && simAffectedSectors.has(sector) && (
+                      <span className="text-[7px] px-1 py-0.5 border border-[#ff9100]/30 bg-[#ff9100]/10 text-[#ff9100] tracking-wider">
+                        SIM
+                      </span>
+                    )}
                   </div>
                   <ShockBadge score={shockScore} />
                 </button>
@@ -157,6 +189,7 @@ export function StocksBySector() {
                       const changePct = socketPrice?.changePercent ?? quote?.dp ?? stock.priceChangePercent;
                       const positive = change >= 0;
                       const isSelected = selectedSymbol === stock.ticker;
+                      const isFlashing = flashTickers.has(stock.ticker);
 
                       return (
                         <div
@@ -165,6 +198,10 @@ export function StocksBySector() {
                           className={`flex items-center justify-between px-3 py-1.5 cursor-pointer transition-colors hover:bg-[#141414] border-b border-[#0e0e0e] ${
                             isSelected ? "bg-[#141414] border-l-2 border-l-[#c41e3a]" : "pl-[14px]"
                           }`}
+                          style={isFlashing ? {
+                            backgroundColor: positive ? 'rgba(0, 200, 83, 0.08)' : 'rgba(196, 30, 58, 0.08)',
+                            transition: 'background-color 0.3s ease-in',
+                          } : undefined}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             {positive ? (

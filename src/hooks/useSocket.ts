@@ -20,6 +20,7 @@ export function useSocket() {
   const [prices, setPrices] = useState<Record<string, PriceUpdate>>({});
   const [latestEvent, setLatestEvent] = useState<any>(null);
   const [latestShock, setLatestShock] = useState<any>(null);
+  const [latestSimulation, setLatestSimulation] = useState<any>(null);
 
   useEffect(() => {
     const socket = io(SOCKET_URL, {
@@ -38,6 +39,7 @@ export function useSocket() {
       socket.emit('subscribe:shocks');
       socket.emit('subscribe:prices');
       socket.emit('subscribe:surprises');
+      socket.emit('subscribe:simulation');
     });
 
     socket.on('disconnect', () => setConnected(false));
@@ -54,6 +56,10 @@ export function useSocket() {
       setLatestShock(data);
     });
 
+    socket.on('simulation:result', (data: any) => {
+      setLatestSimulation(data);
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -65,5 +71,5 @@ export function useSocket() {
     );
   }, [prices]);
 
-  return { connected, prices, priceList, latestEvent, latestShock };
+  return { connected, prices, priceList, latestEvent, latestShock, latestSimulation };
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ComposedChart, Bar, ReferenceLine,
@@ -8,7 +8,7 @@ import { useStocks } from "../../hooks/useBackendData";
 import { useChartData } from "../../hooks/useChartData";
 import { usePrediction } from "../../hooks/usePrediction";
 import { useApp } from "../context";
-import { Activity, ChevronDown, Loader, Brain } from "lucide-react";
+import { Activity, ChevronDown, Loader, Brain, Zap } from "lucide-react";
 
 const timeframes = ["1D", "1W", "1M", "3M", "1Y"];
 
@@ -56,7 +56,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 }
 
 export function StockChart() {
-  const { selectedSymbol, setSelectedSymbol } = useApp();
+  const { selectedSymbol, setSelectedSymbol, simulationResult } = useApp();
   const [selectedTimeframe, setSelectedTimeframe] = useState("1M");
   const [showPrediction, setShowPrediction] = useState(true);
   const { quotes } = useStockData();
@@ -80,6 +80,16 @@ export function StockChart() {
   const { data: prediction, loading: predictionLoading } = usePrediction(selectedSymbol);
 
   const positive = (liveChange ?? 0) >= 0;
+
+  // Simulation shock for selected stock
+  const simShock = useMemo(() => {
+    if (!simulationResult?.shocks) return null;
+    return simulationResult.shocks.find((s) => s.ticker === selectedSymbol) ?? null;
+  }, [simulationResult, selectedSymbol]);
+
+  const simShockPrice = simShock
+    ? parseFloat((livePrice * (1 + simShock.predictedChange / 100)).toFixed(2))
+    : null;
 
   // Merge historical + prediction data
   const mergedData: ChartPoint[] = [
@@ -165,6 +175,12 @@ export function StockChart() {
               {positive ? "+" : ""}{(liveChange ?? 0).toFixed(2)} ({positive ? "+" : ""}{(liveChangePct ?? 0).toFixed(2)}%)
             </span>
             <span className="text-[8px] text-[#404040]">LIVE</span>
+            {simShock && (
+              <span className="text-[8px] px-1.5 py-0.5 border border-[#ff9100]/30 bg-[#ff9100]/10 text-[#ff9100] tracking-wider flex items-center gap-1">
+                <Zap size={8} />
+                SHOCK IMPACT
+              </span>
+            )}
           </div>
 
           {/* Prediction toggle */}
@@ -314,6 +330,23 @@ export function StockChart() {
                 stroke="#7c4dff"
                 strokeDasharray="3 3"
                 strokeOpacity={0.5}
+              />
+            )}
+
+            {/* Simulation shock reference line */}
+            {simShock && simShockPrice && (
+              <ReferenceLine
+                yAxisId="price"
+                y={simShockPrice}
+                stroke={simShock.predictedChange >= 0 ? "#00c853" : "#c41e3a"}
+                strokeDasharray="6 3"
+                strokeWidth={1.5}
+                label={{
+                  value: `SIM: ${simShock.predictedChange >= 0 ? "+" : ""}${simShock.predictedChange.toFixed(1)}%`,
+                  position: "right",
+                  fill: simShock.predictedChange >= 0 ? "#00c853" : "#c41e3a",
+                  fontSize: 9,
+                }}
               />
             )}
           </ComposedChart>

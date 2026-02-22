@@ -138,9 +138,22 @@ export async function getSectors(): Promise<ApiSector[]> {
 }
 
 // ── Simulation ───────────────────────────────────────────────────────────────
+export interface ApiShockScore {
+  eventId: string;
+  ticker: string;
+  companyName: string;
+  sector: string;
+  country: string;
+  score: number;
+  predictedChange: number;
+  confidence: number;
+  direction: 'up' | 'down';
+}
+
 export interface ApiSimulationResult {
   simulatedEventId: string;
   title: string;
+  shocks: ApiShockScore[];
   heatmap: ApiHeatmapEntry[];
   arcs: ApiConnectionArc[];
   interlinkednessScore: number;
@@ -151,6 +164,7 @@ export interface ApiSimulationResult {
 
 export async function simulateEvent(params: {
   title: string;
+  description?: string;
   type: string;
   severity: number;
   location: { lat: number; lng: number; country: string; region?: string };

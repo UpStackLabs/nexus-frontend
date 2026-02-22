@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
+import type { ApiSimulationResult } from "../services/api";
 
 export type NavTab = "DASHBOARD" | "GLOBE" | "INTEL" | "MARKETS";
 
@@ -15,6 +16,10 @@ interface AppState {
   setSelectedSymbol: (sym: string) => void;
   selectedEventId: string | null;
   setSelectedEventId: (id: string | null) => void;
+  simulationResult: ApiSimulationResult | null;
+  setSimulationResult: (r: ApiSimulationResult | null) => void;
+  isSimulating: boolean;
+  setIsSimulating: (v: boolean) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -26,6 +31,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState("NVDA");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [simulationResult, setSimulationResult] = useState<ApiSimulationResult | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   return (
     <AppContext.Provider value={{
@@ -35,6 +42,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       chatOpen, setChatOpen,
       selectedSymbol, setSelectedSymbol,
       selectedEventId, setSelectedEventId,
+      simulationResult, setSimulationResult,
+      isSimulating, setIsSimulating,
     }}>
       {children}
     </AppContext.Provider>

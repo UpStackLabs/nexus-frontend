@@ -12,7 +12,7 @@ const COND: React.CSSProperties = { fontFamily: "'IBM Plex Sans Condensed', sans
 
 export function Header() {
   const [clock, setClock] = useState('');
-  const { selectedEventId, setSelectedEventId, setChatOpen, chatOpen } = useApp();
+  const { selectedEventId, setSelectedEventId, setChatOpen, chatOpen, setSimulationResult } = useApp();
   const { events } = useEvents();
 
   useEffect(() => {
@@ -90,7 +90,10 @@ export function Header() {
 
       {/* Action buttons: Simulate */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px', flexShrink: 0 }}>
-        <SimulationForm onResult={(_r: ApiSimulationResult) => { /* globe will update via WebSocket */ }} />
+        <SimulationForm onResult={(r: ApiSimulationResult) => {
+          setSimulationResult(r);
+          setSelectedEventId(r.simulatedEventId);
+        }} />
       </div>
 
       <div style={{ flex: 1 }} />

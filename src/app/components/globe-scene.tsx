@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import * as api from "../../services/api";
+import { useApp } from "../context";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
 
@@ -47,10 +48,17 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
   const [vectorCount, setVectorCount] = useState(0);
   const [mapReady, setMapReady] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<api.ApiEvent | null>(null);
+  const { simulationResult } = useApp();
+  const isSimEvent = selectedEventId?.startsWith('sim-') ?? false;
 
   // ── Resolve full event when selectedEventId changes ───────────────
   useEffect(() => {
     if (!selectedEventId) {
+      setSelectedEvent(null);
+      return;
+    }
+    // Simulation events don't exist in the backend store
+    if (selectedEventId.startsWith('sim-')) {
       setSelectedEvent(null);
       return;
     }
@@ -88,7 +96,10 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
       }>[] = [];
 
       try {
-        const heatmap = await api.getGlobeHeatmap(selectedEventId ?? undefined);
+        // Use simulation data from context for sim events, otherwise fetch from API
+        const heatmap = (isSimEvent && simulationResult?.heatmap)
+          ? simulationResult.heatmap
+          : await api.getGlobeHeatmap(selectedEventId ?? undefined);
         features = heatmap.map((h) => ({
           type: "Feature",
           properties: {
@@ -108,7 +119,7 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
         console.error("Failed to load heatmap:", err);
       }
 
-      if (selectedEventId) {
+      if (selectedEventId && !isSimEvent) {
         try {
           const vecHeatmap = await api.getGlobeVectorProximity(selectedEventId);
           vecFeatures = vecHeatmap.map((h) => ({
@@ -260,7 +271,7 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
     }
 
     loadCountryMarkers();
-  }, [selectedEventId, mapReady]);
+  }, [selectedEventId, mapReady, isSimEvent, simulationResult]);
 
   // ── Company / stock dots ─────────────────────────────────────────
   useEffect(() => {
@@ -411,7 +422,10 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
       }>[] = [];
 
       try {
-        const backendArcs = await api.getGlobeArcs(selectedEventId ?? undefined);
+        // Use simulation arcs from context for sim events
+        const backendArcs = (isSimEvent && simulationResult?.arcs)
+          ? simulationResult.arcs
+          : await api.getGlobeArcs(selectedEventId ?? undefined);
         arcFeatures = backendArcs.map((arc) => ({
           type: "Feature" as const,
           properties: {
@@ -461,7 +475,7 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
     }
 
     loadArcs();
-  }, [selectedEventId, mapReady]);
+  }, [selectedEventId, mapReady, isSimEvent, simulationResult]);
 
   // ── Map init ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -506,6 +520,9 @@ export function GlobeScene({ selectedEventId }: GlobeSceneProps) {
       {/* HUD — top left */}
       <div className="absolute top-3 left-3 z-30 text-[10px] tracking-[0.1em] pointer-events-none">
         <div className="text-[#505050] mb-0.5">[SCOPE] GLOBAL SHOCK MAP</div>
+        {isSimEvent && (
+          <div className="text-[#ff9100] mb-0.5 animate-pulse">[SIMULATION ACTIVE]</div>
+        )}
         {selectedEvent ? (
           <>
             <div className="text-[#c41e3a] mb-0.5 max-w-[200px] truncate">
