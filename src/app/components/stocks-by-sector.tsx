@@ -19,10 +19,15 @@ function MiniSparkline({ symbol, positive }: { symbol: string; positive: boolean
   const color = positive ? "#00c853" : "#c41e3a";
   if (data.length === 0) return <div className="w-14 h-7" />;
 
+  const prices = data.map((d) => d.price);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const pad = (max - min) * 0.05 || 0.01;
+
   return (
     <ResponsiveContainer width="100%" height={28}>
       <AreaChart data={data}>
-        <YAxis domain={["dataMin", "dataMax"]} hide />
+        <YAxis domain={[min - pad, max + pad]} hide />
         <defs>
           <linearGradient id={`sbs-${symbol}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.5} />
