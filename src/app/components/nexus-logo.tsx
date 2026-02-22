@@ -8,17 +8,14 @@ export function NexusLogo({ size = 28 }: { size?: number }) {
       height={size}
       style={{ display: 'block', flexShrink: 0 }}
     >
-      <defs>
-        <linearGradient id={id} x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0%" stopColor="#c41e3a" />
-          <stop offset="100%" stopColor="#9c27b0" />
-        </linearGradient>
-      </defs>
-
-      {/* Three ascending chart bars */}
-      <rect x="8" y="38" width="12" height="20" rx="2" fill={`url(#${id})`} opacity="0.6" />
-      <rect x="26" y="24" width="12" height="34" rx="2" fill={`url(#${id})`} opacity="0.8" />
-      <rect x="44" y="8" width="12" height="50" rx="2" fill={`url(#${id})`} />
+      {/* N shape made of connected nodes — Nexus logo */}
+      <line x1="14" y1="50" x2="26" y2="14" stroke="#c42020" strokeWidth="5" strokeLinecap="round" />
+      <line x1="26" y1="14" x2="38" y2="44" stroke="#c42020" strokeWidth="5" strokeLinecap="round" />
+      <line x1="38" y1="44" x2="50" y2="16" stroke="#c42020" strokeWidth="5" strokeLinecap="round" />
+      <circle cx="14" cy="50" r="5.5" fill="#c42020" />
+      <circle cx="26" cy="14" r="5.5" fill="#c42020" />
+      <circle cx="38" cy="44" r="5.5" fill="#c42020" />
+      <circle cx="50" cy="16" r="5.5" fill="#c42020" />
     </svg>
   );
 }
