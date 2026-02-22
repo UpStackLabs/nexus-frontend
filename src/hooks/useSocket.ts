@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') ?? (import.meta.env.PROD ? '' : 'http://localhost:3000');
 
 interface PriceUpdate {
   ticker: string;
