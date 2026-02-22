@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { ChevronRight, TrendingUp, TrendingDown, Layers, Loader } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, ResponsiveContainer, YAxis } from "recharts";
 import { useStocks, useSectors } from "../../hooks/useBackendData";
 import { useStockData } from "../../hooks/useStockData";
 import { useSocket } from "../../hooks/useSocket";
@@ -22,6 +22,7 @@ function MiniSparkline({ symbol, positive }: { symbol: string; positive: boolean
   return (
     <ResponsiveContainer width="100%" height={28}>
       <AreaChart data={data}>
+        <YAxis domain={["dataMin", "dataMax"]} hide />
         <defs>
           <linearGradient id={`sbs-${symbol}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.5} />
